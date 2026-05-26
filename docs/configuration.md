@@ -1,6 +1,6 @@
 # 配置说明
 
-## Add-on Options
+## 应用配置项
 
 | 字段 | 示例 | 说明 |
 | --- | --- | --- |
@@ -9,9 +9,9 @@
 | `building_id` | `building_1_a` | 楼栋预设。会按楼栋规则表生成门口机 IP。 |
 | `center_ip` | `192.168.16.2` | 小区中心地址。 |
 | `property_center_ip` | `192.168.16.3` | 物业中心机地址。 |
-| `api_host` | `0.0.0.0` | Add-on HTTP API 监听地址。 |
-| `api_port` | `8099` | Add-on HTTP API 监听端口。 |
-| `api_token` | 空 | 动作接口 Bearer token。为空时解锁/接听接口不可用。 |
+| `api_host` | `0.0.0.0` | 后端接口监听地址。 |
+| `api_port` | `8099` | 后端接口监听端口。 |
+| `api_token` | 空 | 动作接口访问令牌。为空时解锁/接听接口不可用。 |
 | `door_01_ip` - `door_08_ip` | 空 | 可选门口机 IP 覆盖。留空时使用当前楼栋预设；填写后覆盖对应号机。 |
 
 ## 楼栋 ID
@@ -58,16 +58,10 @@ door_02_ip: "192.168.16.250"
 
 ## 持久化配置文件
 
-Add-on 会写入：
-
-```text
-/data/yunhai_config.json
-```
-
-这个文件属于 Add-on 数据目录，会随 Add-on 备份。后续 HA Integration 可以通过服务或 API 修改门口机 IP，再由核心后端读取。
+应用会在数据目录中写入运行时配置文件。这个文件属于应用数据目录，会随应用备份。后续 HA 集成可以通过服务或接口修改门口机 IP，再由核心后端读取。
 
 当前同步规则：
 
-- `local_ip`、`local_id`、`building_id`、`center_ip`、`property_center_ip`、API 配置以 Add-on options 为准。
+- `local_ip`、`local_id`、`building_id`、`center_ip`、`property_center_ip`、接口配置以应用配置页为准。
 - `devices` 从楼栋规则表和 `door_01_ip` 到 `door_08_ip` 覆盖项生成。
-- `/data/yunhai_config.json` 只作为运行时镜像保存，重启后会重新同步应用配置页。
+- 运行时配置文件只作为当前配置镜像保存，重启后会重新同步应用配置页。

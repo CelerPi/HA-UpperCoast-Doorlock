@@ -15,13 +15,13 @@ configuration:
     name: 物业中心机地址
     description: 物业中心机 IP 地址。
   api_host:
-    name: API 监听地址
-    description: HTTP API 监听地址，通常保持 0.0.0.0。
+    name: 后端接口监听地址
+    description: 后端 HTTP 接口监听地址，通常保持 0.0.0.0。
   api_port:
-    name: API 监听端口
-    description: HTTP API 监听端口，默认 8099。
+    name: 后端接口监听端口
+    description: 后端 HTTP 接口监听端口，默认 8099。
   api_token:
-    name: API 访问令牌
+    name: 后端接口访问令牌
     description: 接听、解锁等动作接口使用的 Bearer token。为空时动作接口不可用。
   door_01_ip:
     name: 1号机 IP 覆盖

@@ -1,7 +1,7 @@
-name: "UpperCoast Doorlock System"
-version: "0.1.3"
+name: "门禁系统后端"
+version: "0.1.4"
 slug: "yunhai_intercom"
-description: "云海湾门禁虚拟室内机后端。"
+description: "运行虚拟室内机、呼叫监听、接听和解锁服务。"
 url: "https://github.com/CelerPi/HA-UpperCoast-DoorLock-System"
 arch:
   - aarch64

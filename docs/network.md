@@ -18,9 +18,9 @@ UDP 10000
 UDP 10008
 ```
 
-Add-on 使用 `host_network: true`，因此它会直接绑定 HA 主机网络上的 `local_ip:10000` 和 `local_ip:10008`。
+后端应用使用主机网络模式，因此它会直接绑定 HA 主机网络上的 `local_ip:10000` 和 `local_ip:10008`。
 
-Add-on HTTP API 默认监听：
+后端接口默认监听：
 
 ```text
 TCP 8099
@@ -68,4 +68,4 @@ ip addr
 ss -lunp | grep -E ':10000|:10008'
 ```
 
-Add-on 启动后，这两个端口应由 Add-on 进程占用。
+后端应用启动后，这两个端口应由应用进程占用。

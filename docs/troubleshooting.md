@@ -11,11 +11,11 @@ lookup ghcr.io on 127.0.0.11:53: server misbehaving
 
 说明 HA 里的 Docker 构建环境没有正常解析镜像仓库域名。这不是 GitHub 仓库 private/public 的问题；代码仓库已经拉到了，失败点是在下载 Docker 基础镜像。
 
-当前 Add-on 已改用 Docker Hub 的 `python:3.12-alpine` 基础镜像，避开 `ghcr.io/home-assistant/base`。如果刷新仓库后仍失败，并且日志变成 `registry-1.docker.io`、`auth.docker.io` 或其他域名解析失败，就需要修 HA 主机或 Supervisor 的 DNS：
+当前应用已改用 Docker Hub 的 `python:3.12-alpine` 基础镜像，避开 `ghcr.io/home-assistant/base`。如果刷新仓库后仍失败，并且日志变成 `registry-1.docker.io`、`auth.docker.io` 或其他域名解析失败，就需要修 HA 主机或 Supervisor 的 DNS：
 
 1. 在 HA 的系统网络设置里检查 DNS。
 2. 可以临时改成路由器 DNS，或 `223.5.5.5`、`119.29.29.29`、`1.1.1.1` 这类稳定 DNS。
-3. 重启 Supervisor 或重启 HA 主机后重新安装 Add-on。
+3. 重启 Supervisor 或重启 HA 主机后重新安装应用。
 
 ## 日志显示 IP 绑定失败
 
@@ -25,7 +25,7 @@ lookup ghcr.io on 127.0.0.11:53: server misbehaving
 本机 IP 192.168.16.64 不在当前网卡上
 ```
 
-说明 Add-on options 中的 `local_ip` 没有配置到 HA 主机网卡上。请先在 HA 网络设置或系统网络中给主机配置该 IP。
+说明应用配置页中的 `local_ip` 没有配置到 HA 主机网卡上。请先在 HA 网络设置或系统网络中给主机配置该 IP。
 
 ## 日志显示端口被占用
 
@@ -38,10 +38,10 @@ lookup ghcr.io on 127.0.0.11:53: server misbehaving
 说明已有程序占用了 UDP `10000` 或 `10008`。常见原因：
 
 - 旧 `Unlock` 原型仍在运行。
-- 另一个 Add-on 实例正在运行。
+- 另一个应用实例正在运行。
 - 手动测试脚本没有退出。
 
-停止占用进程后重启 Add-on。
+停止占用进程后重启应用。
 
 ## 呼叫没有触发
 
@@ -53,9 +53,9 @@ lookup ghcr.io on 127.0.0.11:53: server misbehaving
 4. 当前楼栋门口机 IP 是否为空。
 5. HA 主机是否接在门禁网络或正确 VLAN 上。
 
-## API 无法访问
+## 后端接口无法访问
 
-先检查 Add-on 日志是否已经出现 `yunhai_intercom_started`。
+先检查应用日志是否已经出现启动成功记录。
 
 再检查：
 
@@ -82,9 +82,9 @@ curl http://<HA主机IP>:8099/health
 3. 确认 `local_id` 是当前房号对应 ID。
 4. 使用 Wireshark 对比旧成功抓包中的 `b7000600` 发送时机。
 
-## 当前还没有 Dashboard 卡片
+## 当前还没有仪表盘卡片
 
-这是正常的。当前阶段先把 Add-on 后端跑稳，后续再接：
+这是正常的。当前阶段先把后端应用跑稳，后续再接：
 
-1. HA Custom Integration：暴露实体、服务和事件。
-2. Lovelace Custom Card：显示监控、呼入弹窗、接听、挂断和解锁按钮。
+1. HA 集成：暴露实体、服务和事件。
+2. 仪表盘卡片：显示监控、呼入弹窗、接听、挂断和解锁按钮。

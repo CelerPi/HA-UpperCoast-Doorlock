@@ -1,23 +1,23 @@
-# Get Start
+# 开始使用
 
-本文说明如何把本仓库作为 Home Assistant Add-on 仓库安装，并让 HA 主机接入云海湾门禁网络。
+本文说明如何把本仓库作为 Home Assistant 应用仓库安装，并让 HA 主机接入门禁网络。
 
 ## 文档目录
 
-- [安装 Add-on](#安装-add-on)
+- [安装后端应用](#安装后端应用)
 - [基础配置](configuration.md)
 - [楼栋 IP 规则](building-ips.md)
 - [网络连接方式](network.md)
-- [Add-on API](api.md)
+- [后端接口](api.md)
 - [HA 首次测试清单](ha-first-test.md)
 - [排障](troubleshooting.md)
 
 ## 当前状态
 
-当前 Add-on 已具备后端常驻核心：
+当前后端应用已具备常驻核心：
 
-- 读取 HA Add-on options。
-- 维护持久化配置文件 `/data/yunhai_config.json`。
+- 读取 HA 应用配置。
+- 维护运行时配置文件。
 - 绑定 UDP `10000` 和 `10008`。
 - 提供 HTTP 健康检查和状态接口。
 - 监听已配置门口机呼入。
@@ -25,24 +25,24 @@
 - 呼叫会话中发送接听、解锁和音频上行包。
 - 解析呼叫/监控视频分片并重组 JPEG。
 
-Lovelace 卡片和 HA Custom Integration 还未完成，因此当前阶段主要用于验证 Add-on 后端在 HA 设备上能常驻运行。
+仪表盘卡片和 HA 集成还未完成，因此当前阶段主要用于验证后端应用在 HA 设备上能常驻运行。
 
-## 安装 Add-on
+## 安装后端应用
 
-1. 在 Home Assistant 中打开 **Settings > Add-ons > Add-on Store**。
-2. 右上角菜单选择 **Repositories**。
+1. 在 Home Assistant 中打开 **设置 > 加载项 > 加载项商店**。
+2. 右上角菜单选择 **仓库**。
 3. 添加仓库地址：
 
    ```text
    https://github.com/CelerPi/HA-UpperCoast-DoorLock-System.git
    ```
 
-4. 刷新 Add-on Store，打开 **UpperCoast Doorlock System**。
-5. 点击 **Install**。
-6. 进入 **Configuration** 页，按 [基础配置](configuration.md) 填写参数。
-7. 打开 **Start on boot** 和 **Watchdog**。
-8. 点击 **Start**。
-9. 在 **Log** 页确认看到 `yunhai_intercom_started`。
+4. 刷新加载项商店，打开 **门禁系统后端**。
+5. 点击 **安装**。
+6. 进入 **配置** 页，按 [基础配置](configuration.md) 填写参数。
+7. 打开 **开机启动** 和 **自动恢复**。
+8. 点击 **启动**。
+9. 在 **日志** 页确认看到启动成功记录。
 10. 按 [HA 首次测试清单](ha-first-test.md) 做第一次实机验证。
 
 ## 最小可用配置
@@ -74,19 +74,13 @@ door_08_ip: ""
 
 ## 第一次启动后会发生什么
 
-Add-on 会创建：
-
-```text
-/data/yunhai_config.json
-```
-
-这个文件保存当前门口机列表和 IP。应用配置页中的本机 IP、本机 ID、楼栋、中心地址和门口机 IP 覆盖项会在每次启动时同步到该文件。
+应用会在数据目录中创建运行时配置文件，用于保存当前门口机列表和 IP。应用配置页中的本机 IP、本机 ID、楼栋、中心地址和门口机 IP 覆盖项会在每次启动时同步到该文件。
 
 ## 验证方式
 
-1. 确认 Add-on 日志没有端口占用或本机 IP 绑定失败。
+1. 确认应用日志没有端口占用或本机 IP 绑定失败。
 2. 在门口机上呼叫当前房号。
 3. 后端会在内存中进入呼叫会话，并按旧原型已验证流程发送会话保活和视频请求。
-4. 如果后续接入 HA Integration 或调试接口，可调用解锁/接听服务验证 `b7000600` 和 `b7000500`。
+4. 如果后续接入 HA 集成或调试接口，可调用解锁/接听服务验证 `b7000600` 和 `b7000500`。
 
-当前后端遵循旧 `Unlock` 原型中已经真实验证过的会话流程，但去掉了本地 Web UI、命令行实验分支和浏览器打开逻辑。
+当前后端遵循旧 `Unlock` 原型中已经真实验证过的会话流程，但去掉了本地网页界面、命令行实验分支和浏览器打开逻辑。

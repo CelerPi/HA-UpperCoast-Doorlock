@@ -1,6 +1,6 @@
-# Add-on API
+# 后端接口
 
-当前 Add-on 提供一个轻量 JSON API，用于后续 HA Custom Integration 调用，也方便第一次在 HA 中验证 Add-on 是否正常启动。
+当前后端应用提供一个轻量 JSON 接口，用于后续 HA 集成调用，也方便第一次在 HA 中验证应用是否正常启动。
 
 默认监听：
 
@@ -8,7 +8,7 @@
 http://<HA主机IP>:8099
 ```
 
-监听地址和端口由 Add-on options 控制：
+监听地址和端口由应用配置页控制：
 
 ```yaml
 api_host: "0.0.0.0"
@@ -44,7 +44,7 @@ curl http://<HA主机IP>:8099/api/status
 
 ## 解锁
 
-需要设置 `api_token`，并传入 Bearer token：
+需要设置 `api_token`，并传入访问令牌：
 
 ```bash
 curl -X POST http://<HA主机IP>:8099/api/unlock \
