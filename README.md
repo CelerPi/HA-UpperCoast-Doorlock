@@ -32,6 +32,11 @@
 - 协议层已经开始迁移，当前包含呼叫中解锁包、监控发现包、监控请求/保活包、视频分片解析和 JPEG 重组。
 - 呼叫状态层已经开始迁移，当前可以从已配置门口机 IP 识别呼入触发包和当前呼叫结束包。
 
+当前第三阶段已完成：
+- HA 集成（`custom_components/uppercoast_doorlock/`）已创建，提供 5 个实体（binary_sensor、camera、3个button）和 3 个服务调用（unlock/answer/hangup）
+- addon 新增 `/api/frame` 和 `/api/hangup` 接口
+- 集成定时轮询 `/api/status`，状态变化时发布 HA 事件（call_started / call_ended / frame_received）
+
 ## 使用文档
 
 - [开始使用](docs/get-start.md)

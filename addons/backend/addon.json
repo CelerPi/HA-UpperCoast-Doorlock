@@ -1,0 +1,8 @@
+{
+  "name": "小区门禁后端服务",
+  "name_display": "小区门禁后端服务",
+  "description": "麦驰可视对讲门禁系统的 Home Assistant 后端加载项，提供呼叫监听、视频流、音频通话和远程控制功能。",
+  "homepage": "https://github.com/CelerPi/HA-UpperCoast-DoorLock-System",
+  "version": "0.2.0",
+  "api_version": ""
+}

@@ -5,3 +5,14 @@
 当前版本从 Home Assistant 应用的配置页读取参数，并常驻监听门禁协议。
 
 由于门禁协议需要在 HA 主机网络上绑定 UDP `10000` 和 `10008`，本应用使用主机网络模式。
+
+## 接口列表
+
+| 接口 | 方法 | 说明 |
+|------|------|------|
+| `/health` | GET | 健康检查 |
+| `/api/status` | GET | 运行时状态和配置 |
+| `/api/frame` | GET | 获取当前 JPEG 视频帧 |
+| `/api/unlock` | POST | 解锁门口机 |
+| `/api/answer` | POST | 接听呼叫 |
+| `/api/hangup` | POST | 挂断通话 |

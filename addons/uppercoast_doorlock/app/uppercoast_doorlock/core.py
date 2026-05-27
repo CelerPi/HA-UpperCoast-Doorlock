@@ -96,6 +96,10 @@ class FrameHub:
                 "has_audio": bool(self._audio_chunks),
             }
 
+    def get_frame(self) -> bytes | None:
+        with self._condition:
+            return self._frame
+
 
 class IntercomCore:
     def __init__(self, config: IntercomConfig, frame_hub: FrameHub | None = None) -> None:
@@ -133,6 +137,12 @@ class IntercomCore:
             return False
         with self._lock:
             self._answer_requests.append(target_ip)
+        return True
+
+    def request_hangup(self, target_ip: str) -> bool:
+        if not self._is_current_call(target_ip):
+            return False
+        self.frame_hub.end_call()
         return True
 
     def request_outgoing_audio(self, target_ip: str, pcm: bytes) -> bool:

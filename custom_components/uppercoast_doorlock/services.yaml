@@ -1,0 +1,33 @@
+unlock:
+  name: 解锁门禁
+  description: 在呼叫状态下解锁指定门口机
+  fields:
+    target_ip:
+      name: 门口机IP
+      description: 要解锁的门口机IP地址，不填则使用当前呼叫中的门口机
+      example: "192.168.16.225"
+      required: false
+    service_call:
+      name: 服务调用数据
+      description: 内部传递用
+      required: false
+
+answer:
+  name: 接听呼叫
+  description: 接听当前呼入的门口机
+  fields:
+    target_ip:
+      name: 门口机IP
+      description: 要接听的门口机IP地址，不填则使用当前呼叫中的门口机
+      example: "192.168.16.225"
+      required: false
+
+hangup:
+  name: 挂断通话
+  description: 挂断当前通话
+  fields:
+    target_ip:
+      name: 门口机IP
+      description: 要挂断的门口机IP地址
+      example: "192.168.16.225"
+      required: false

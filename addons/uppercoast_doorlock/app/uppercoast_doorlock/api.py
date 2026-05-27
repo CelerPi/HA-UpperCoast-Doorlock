@@ -25,10 +25,21 @@ def make_api_handler(core: Any, config: IntercomConfig) -> type[BaseHTTPRequestH
                     },
                 )
                 return
+            if self.path == "/api/frame":
+                frame = core.frame_hub.get_frame()
+                if frame is None:
+                    self._write_json(404, {"ok": False, "error": "no_frame"})
+                    return
+                self.send_response(200)
+                self.send_header("Content-Type", "image/jpeg")
+                self.send_header("Content-Length", str(len(frame)))
+                self.end_headers()
+                self.wfile.write(frame)
+                return
             self._write_json(404, {"ok": False, "error": "not_found"})
 
         def do_POST(self) -> None:
-            if self.path not in ("/api/unlock", "/api/answer"):
+            if self.path not in ("/api/unlock", "/api/answer", "/api/hangup"):
                 self._write_json(404, {"ok": False, "error": "not_found"})
                 return
             if not self._authorized():
@@ -44,9 +55,12 @@ def make_api_handler(core: Any, config: IntercomConfig) -> type[BaseHTTPRequestH
             if self.path == "/api/unlock":
                 accepted = core.request_unlock(str(target_ip))
                 action = "unlock"
-            else:
+            elif self.path == "/api/answer":
                 accepted = core.request_answer(str(target_ip))
                 action = "answer"
+            else:
+                accepted = core.request_hangup(str(target_ip))
+                action = "hangup"
 
             if not accepted:
                 self._write_json(409, {"ok": False, "error": "request_rejected", "action": action})

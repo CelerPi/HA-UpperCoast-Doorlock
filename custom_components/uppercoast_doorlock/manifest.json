@@ -1,0 +1,13 @@
+{
+  "domain": "uppercoast_doorlock",
+  "name": "虚拟门禁系统",
+  "version": "0.1.1",
+  "documentation": "https://github.com/CelerPi/HA-UpperCoast-DoorLock-System",
+  "issue_tracker": "https://github.com/CelerPi/HA-UpperCoast-DoorLock-System/issues",
+  "dependencies": [],
+  "codeowners": [],
+  "requirements": ["aiohttp"],
+  "integration_type": "hub",
+  "supported_states": [],
+  "import/expose": ["binary_sensor", "sensor", "camera"]
+}

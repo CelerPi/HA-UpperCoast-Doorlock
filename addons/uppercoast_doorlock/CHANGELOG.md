@@ -1,5 +1,13 @@
 # 更新日志
 
+## 0.1.1 - 2026-05-27
+
+- 新增 `GET /api/frame` 接口，返回当前 JPEG 视频帧，供 HA 集成 camera 实体调用。
+- 新增 `POST /api/hangup` 接口，挂断当前通话。
+- 新增 `request_hangup()` 方法到 `IntercomCore`，触发通话结束。
+- 新增 `get_frame()` 方法到 `FrameHub`，获取当前帧数据。
+- Build config 中 building_id 下拉选项移除 `2栋B座`（该楼栋不存在）。
+
 ## 0.1.0 - 2026-05-27
 
 - 将应用目录、应用标识和 Python 包名统一改为 `uppercoast_doorlock`。
