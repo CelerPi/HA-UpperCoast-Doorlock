@@ -1,5 +1,13 @@
 # 更新日志
 
+## 0.1.4 - 2026-05-27
+
+- 新增 `POST /api/monitor/start` 和 `/api/monitor/stop` 接口，支持主动监控指定门口机
+- 新增 `request_monitor_start` 和 `request_monitor_stop` 方法到 `IntercomCore`
+- 新增 `monitor_start` 和 `monitor_stop` 服务，支持从 HA 调用主动监控
+- Dashboard 卡片支持点击门口机卡片直接弹出监控窗口
+- Dashboard 卡片新增监控弹窗 UI（独立于呼叫弹窗）
+
 ## 0.1.3 - 2026-05-27
 
 - 实体拆分独立平台文件：binary_sensor.py、camera.py、button.py

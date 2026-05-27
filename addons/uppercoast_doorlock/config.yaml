@@ -1,5 +1,5 @@
 name: "虚拟门禁系统"
-version: "0.1.3"
+version: "0.1.4"
 slug: "uppercoast_doorlock"
 description: "仅支持麦驰可视对讲门禁系统；运行虚拟室内机、呼叫监听、接听和解锁服务。"
 url: "https://github.com/CelerPi/HA-UpperCoast-DoorLock-System"

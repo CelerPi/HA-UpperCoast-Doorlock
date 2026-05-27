@@ -89,7 +89,7 @@ HA 集成云海湾门禁系统/
 
 ## 第三阶段：HA 集成（custom_components）
 
-### 实体列表（当前版本 v0.1.3）
+### 实体列表（当前版本 v0.1.4）
 
 | 实体类型 | 名称 | 图标 | 说明 |
 |----------|------|------|------|
@@ -138,6 +138,7 @@ HA 集成 (custom_components/uppercoast_doorlock)
 | v0.1.1 | 新增 /api/frame、/api/hangup 接口 |
 | v0.1.2 | 修复 update_interval 类型错误；添加中英文翻译 |
 | v0.1.3 | 实体拆分独立平台文件；修复 button 平台漏加载 |
+| v0.1.4 | 新增 monitor_start/monitor_stop 服务；Dashboard 卡片点击门口机监控 |
 
 ---
 
