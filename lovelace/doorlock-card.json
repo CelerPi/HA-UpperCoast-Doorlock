@@ -1,0 +1,8 @@
+{
+  "name": "云海湾门禁卡片",
+  "description": "云海湾虚拟门禁系统的 Lovelace 卡片，显示门口机状态、呼入弹窗和主动监控",
+  "filename": "doorlock-card.js",
+  "codeowners": ["@CelerPi"],
+  "hide_when_used": false,
+  "homeassistant": "2024.11.0"
+}

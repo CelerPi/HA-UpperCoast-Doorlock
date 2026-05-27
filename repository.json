@@ -1,0 +1,6 @@
+{
+  "name": "云海湾门禁系统",
+  "description": "麦驰可视对讲门禁系统的 Home Assistant 集成，包含 Addon、集成和 Lovelace 卡片",
+  "url": "https://github.com/CelerPi/HA-UpperCoast-DoorLock-System",
+  "topics": ["doorlock", "intercom", "maite", "homeassistant"]
+}
