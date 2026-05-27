@@ -1,0 +1,41 @@
+{
+  "config": {
+    "title": "虚拟门禁系统",
+    "step": {
+      "user": {
+        "title": "虚拟门禁系统",
+        "description": "请填写门禁后端服务信息",
+        "data": {
+          "host": "Addon 地址",
+          "port": "端口",
+          "token": "API 令牌"
+        },
+        "data_description": {
+          "host": "Addon 运行的主机 IP（通常与 HA 同一网络）",
+          "port": "Addon API 端口（默认 8099）",
+          "token": "Addon 配置中的 api_token"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "无法连接到后端服务，请检查地址、端口和令牌是否正确"
+    },
+    "abort": {
+      "single_instance_allowed": "只允许一个实例"
+    }
+  },
+  "options": {
+    "title": "虚拟门禁系统",
+    "step": {
+      "init": {
+        "title": "虚拟门禁系统",
+        "description": "修改门禁后端服务配置",
+        "data": {
+          "host": "Addon 地址",
+          "port": "端口",
+          "token": "API 令牌"
+        }
+      }
+    }
+  }
+}

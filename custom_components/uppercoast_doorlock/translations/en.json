@@ -1,0 +1,41 @@
+{
+  "config": {
+    "title": "Virtual Door Lock System",
+    "step": {
+      "user": {
+        "title": "Virtual Door Lock System",
+        "description": "Please fill in your door lock backend service information",
+        "data": {
+          "host": "Addon Host",
+          "port": "Port",
+          "token": "API Token"
+        },
+        "data_description": {
+          "host": "Host IP where the Addon is running (same network as HA)",
+          "port": "Addon API port (default 8099)",
+          "token": "API token configured in the Addon"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Cannot connect to backend service. Please check host, port and token."
+    },
+    "abort": {
+      "single_instance_allowed": "Only one instance is allowed"
+    }
+  },
+  "options": {
+    "title": "Virtual Door Lock System",
+    "step": {
+      "init": {
+        "title": "Virtual Door Lock System",
+        "description": "Modify door lock backend service configuration",
+        "data": {
+          "host": "Addon Host",
+          "port": "Port",
+          "token": "API Token"
+        }
+      }
+    }
+  }
+}
