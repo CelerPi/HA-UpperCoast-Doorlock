@@ -7,7 +7,6 @@
   "dependencies": [],
   "codeowners": [],
   "requirements": ["aiohttp"],
-  "integration_type": "hub",
-  "supported_states": [],
-  "import/expose": ["binary_sensor", "sensor", "camera"]
+  "config_flow": true,
+  "integration_type": "hub"
 }
