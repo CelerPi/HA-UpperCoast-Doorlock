@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from datetime import timedelta
 from typing import Any
 
 from homeassistant.core import callback
@@ -19,7 +20,7 @@ class UpperCoastDoorlockCoordinator(DataUpdateCoordinator):
             hass,
             _LOGGER,
             name="uppercoast_doorlock",
-            update_interval=1.0,
+            update_interval=timedelta(seconds=1.0),
         )
         self._client = client
         self._previous: dict[str, Any] = {}
