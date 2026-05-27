@@ -1,19 +1,44 @@
 import { LitElement, html, css } from 'https://unpkg.com/lit-element@3.3.3/lit-element.js?module';
 
+const DOOR_INFO = {
+  building_1_a: [
+    { name: '1号机', floor: '1层', position: '车库', ip: '192.168.16.224' },
+    { name: '2号机', floor: '2层', position: '花园', ip: '192.168.16.225' },
+    { name: '3号机', floor: '-1层', position: '车库', ip: '192.168.16.226' },
+    { name: '4号机', floor: '-2层', position: '车库', ip: '192.168.16.227' },
+    { name: '5号机', floor: '-1层', position: '电梯左侧小门左边', ip: '192.168.16.228' },
+    { name: '6号机', floor: '-1层', position: '电梯右侧小门右边', ip: '192.168.16.229' },
+    { name: '7号机', floor: '-2层', position: '电梯左侧小门左边', ip: '192.168.23.164' },
+    { name: '8号机', floor: '1层', position: '电梯正对', ip: '192.168.23.165' },
+  ],
+};
+
+const BUILDING_NAMES = {
+  building_1_a: '1栋A座',
+  building_1_b: '1栋B座',
+  building_1_c: '1栋C座',
+  building_1_d: '1栋D座',
+  building_1_e: '1栋E座',
+  building_2_a: '2栋A座',
+  building_2_b: '2栋B座',
+  building_2_c: '2栋C座',
+};
+
 class DoorlockCard extends LitElement {
   static get properties() {
     return {
       _hass: { type: Object, state: true },
+      _config: { type: Object, state: true },
       _callActive: { type: Boolean, state: true },
-      _deviceName: { type: String, state: true },
       _displayName: { type: String, state: true },
       _targetIp: { type: String, state: true },
       _floorLabel: { type: String, state: true },
       _positionDetail: { type: String, state: true },
       _cameraUrl: { type: String, state: true },
-      _loadingFrame: { type: Boolean, state: true },
-      _showCallPopup: { type: Boolean, state: true },
-      _config: { type: Object },
+      _showPopup: { type: Boolean, state: true },
+      _cameraLoading: { type: Boolean, state: true },
+      _activeDevices: { type: Array, state: true },
+      _buildingId: { type: String, state: true },
     };
   }
 
@@ -22,334 +47,512 @@ class DoorlockCard extends LitElement {
       :host {
         display: block;
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        --doorlock-green: #34d399;
+        --doorlock-red: #f87171;
+        --doorlock-blue: #60a5fa;
+        --doorlock-gray: #6b7280;
+        --doorlock-bg: #0f172a;
+        --doorlock-card-bg: rgba(30, 41, 59, 0.7);
+        --doorlock-glass: rgba(255, 255, 255, 0.06);
+        --doorlock-border: rgba(255, 255, 255, 0.08);
       }
+
       .card {
-        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-        border-radius: 16px;
-        padding: 16px;
-        color: #fff;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        background: var(--doorlock-card-bg);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: 1px solid var(--doorlock-border);
+        border-radius: 20px;
+        overflow: hidden;
+        color: #f1f5f9;
       }
-      .header {
+
+      /* Header */
+      .card-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 16px;
+        padding: 18px 20px 14px;
+        border-bottom: 1px solid var(--doorlock-border);
       }
-      .header-title {
-        font-size: 16px;
-        font-weight: 600;
+      .card-title {
         display: flex;
         align-items: center;
-        gap: 8px;
-      }
-      .header-icon {
-        font-size: 20px;
-      }
-      .status-badge {
-        font-size: 11px;
-        padding: 2px 8px;
-        border-radius: 12px;
-        background: #4caf50;
-      }
-      .status-badge.active {
-        background: #f44336;
-        animation: pulse 1.5s infinite;
-      }
-      @keyframes pulse {
-        0%, 100% { opacity: 1; }
-        50% { opacity: 0.6; }
-      }
-      .door-list {
-        display: grid;
-        gap: 8px;
-      }
-      .door-item {
-        display: flex;
-        align-items: center;
-        padding: 10px 12px;
-        border-radius: 10px;
-        background: rgba(255,255,255,0.08);
-        cursor: pointer;
-        transition: background 0.2s;
         gap: 10px;
       }
-      .door-item:hover {
-        background: rgba(255,255,255,0.15);
+      .card-title-icon {
+        width: 36px;
+        height: 36px;
+        background: linear-gradient(135deg, #34d399 0%, #059669 100%);
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
       }
-      .door-item.offline {
-        opacity: 0.5;
-        cursor: default;
+      .card-title-text {
+        font-size: 15px;
+        font-weight: 600;
+        color: #f1f5f9;
       }
-      .door-indicator {
-        width: 10px;
-        height: 10px;
-        border-radius: 50%;
-        background: #4caf50;
-        flex-shrink: 0;
+      .card-title-sub {
+        font-size: 11px;
+        color: #94a3b8;
+        margin-top: 1px;
       }
-      .door-indicator.offline {
-        background: #555;
-      }
-      .door-indicator.calling {
-        background: #f44336;
-        animation: pulse 1.5s infinite;
-      }
-      .door-info {
-        flex: 1;
-      }
-      .door-name {
-        font-size: 14px;
-        font-weight: 500;
-      }
-      .door-location {
+      .status-badge {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 5px 12px;
+        border-radius: 20px;
         font-size: 12px;
-        color: rgba(255,255,255,0.6);
-        margin-top: 2px;
+        font-weight: 500;
+        background: var(--doorlock-glass);
+        border: 1px solid var(--doorlock-border);
+        color: #94a3b8;
       }
-      .call-popup {
+      .status-badge.active {
+        background: rgba(248, 113, 113, 0.15);
+        border-color: rgba(248, 113, 113, 0.3);
+        color: #f87171;
+      }
+      .status-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: #6b7280;
+      }
+      .status-badge.active .status-dot {
+        background: #f87171;
+        animation: blink 1.2s ease-in-out infinite;
+      }
+      @keyframes blink {
+        0%, 100% { opacity: 1; transform: scale(1); }
+        50% { opacity: 0.5; transform: scale(0.85); }
+      }
+
+      /* Door grid */
+      .door-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 10px;
+        padding: 16px;
+      }
+      @media (max-width: 500px) {
+        .door-grid { grid-template-columns: repeat(2, 1fr); }
+      }
+
+      /* Door item (glass button) */
+      .door-btn {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 14px 8px;
+        background: var(--doorlock-glass);
+        border: 1px solid var(--doorlock-border);
+        border-radius: 14px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        gap: 6px;
+        min-height: 82px;
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+      }
+      .door-btn:hover {
+        background: rgba(255, 255, 255, 0.1);
+        border-color: rgba(255, 255, 255, 0.15);
+        transform: translateY(-1px);
+      }
+      .door-btn:active {
+        transform: translateY(0);
+        background: rgba(255, 255, 255, 0.05);
+      }
+      .door-btn.current-call {
+        background: rgba(248, 113, 113, 0.12);
+        border-color: rgba(248, 113, 113, 0.35);
+      }
+      .door-btn-icon {
+        font-size: 22px;
+        margin-bottom: 2px;
+      }
+      .door-btn-name {
+        font-size: 12px;
+        font-weight: 600;
+        color: #e2e8f0;
+      }
+      .door-btn-floor {
+        font-size: 10px;
+        color: #64748b;
+        text-align: center;
+        line-height: 1.2;
+      }
+      .door-btn.offline {
+        opacity: 0.4;
+        cursor: not-allowed;
+      }
+      .door-btn.offline:hover {
+        transform: none;
+        background: var(--doorlock-glass);
+      }
+
+      /* Floor indicator strip */
+      .door-btn-floor-strip {
+        width: 100%;
+        height: 3px;
+        border-radius: 2px;
+        margin-bottom: 4px;
+      }
+      .floor-1 { background: #60a5fa; }
+      .floor-2 { background: #818cf8; }
+      .floor-b1 { background: #fbbf24; }
+      .floor-b2 { background: #f97316; }
+
+      /* Call popup */
+      .popup-overlay {
         position: fixed;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        width: 380px;
-        background: #1a1a2e;
-        border-radius: 16px;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.7);
+        backdrop-filter: blur(4px);
+        z-index: 9000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+      }
+      .popup {
+        width: 100%;
+        max-width: 400px;
+        background: var(--doorlock-card-bg);
+        border: 1px solid var(--doorlock-border);
+        border-radius: 24px;
         overflow: hidden;
-        z-index: 9999;
-        box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+        backdrop-filter: blur(24px);
+        -webkit-backdrop-filter: blur(24px);
+        box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
+        animation: popupIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+      }
+      @keyframes popupIn {
+        from { opacity: 0; transform: scale(0.88); }
+        to { opacity: 1; transform: scale(1); }
       }
       .popup-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 12px 16px;
-        background: rgba(255,255,255,0.05);
-        border-bottom: 1px solid rgba(255,255,255,0.1);
+        padding: 16px 20px;
+        background: rgba(248, 113, 113, 0.1);
+        border-bottom: 1px solid rgba(248, 113, 113, 0.2);
       }
-      .popup-title {
-        font-size: 14px;
-        font-weight: 600;
+      .popup-header-info {
+        display: flex;
+        align-items: center;
+        gap: 10px;
       }
-      .popup-close {
-        background: none;
-        border: none;
-        color: rgba(255,255,255,0.6);
-        font-size: 20px;
-        cursor: pointer;
-        padding: 0;
-        line-height: 1;
-      }
-      .popup-video {
-        width: 100%;
-        aspect-ratio: 16/9;
-        background: #000;
+      .popup-calling-icon {
+        width: 38px;
+        height: 38px;
+        background: rgba(248, 113, 113, 0.2);
+        border-radius: 10px;
         display: flex;
         align-items: center;
         justify-content: center;
-        color: rgba(255,255,255,0.3);
-        font-size: 12px;
+        font-size: 20px;
+        animation: ring 1.2s ease-in-out infinite;
+      }
+      @keyframes ring {
+        0%, 100% { transform: rotate(0deg); }
+        20% { transform: rotate(-15deg); }
+        40% { transform: rotate(15deg); }
+        60% { transform: rotate(-10deg); }
+        80% { transform: rotate(10deg); }
+      }
+      .popup-header-text {}
+      .popup-calling-label {
+        font-size: 10px;
+        color: #f87171;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+      }
+      .popup-device-name {
+        font-size: 15px;
+        font-weight: 600;
+        color: #f1f5f9;
+        margin-top: 2px;
+      }
+      .popup-device-location {
+        font-size: 11px;
+        color: #64748b;
+        margin-top: 1px;
+      }
+      .popup-close {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: var(--doorlock-glass);
+        border: 1px solid var(--doorlock-border);
+        color: #94a3b8;
+        font-size: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.15s;
+      }
+      .popup-close:hover {
+        background: rgba(255, 255, 255, 0.1);
+        color: #f1f5f9;
+      }
+
+      /* Video area */
+      .popup-video {
+        width: 100%;
+        aspect-ratio: 16 / 9;
+        background: #000;
+        position: relative;
+        overflow: hidden;
       }
       .popup-video img {
         width: 100%;
         height: 100%;
         object-fit: cover;
+        display: block;
       }
+      .popup-video-overlay {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        color: rgba(255, 255, 255, 0.4);
+        font-size: 12px;
+        background: rgba(0, 0, 0, 0.3);
+      }
+      .popup-video-spinner {
+        width: 28px;
+        height: 28px;
+        border: 2px solid rgba(255, 255, 255, 0.15);
+        border-top-color: rgba(255, 255, 255, 0.5);
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+      }
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+
+      /* Action buttons */
       .popup-actions {
         display: flex;
-        padding: 12px;
-        gap: 8px;
+        gap: 10px;
+        padding: 14px 16px 16px;
       }
-      .popup-btn {
+      .action-btn {
         flex: 1;
-        padding: 10px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 5px;
+        padding: 12px 8px;
+        border-radius: 14px;
         border: none;
-        border-radius: 8px;
-        font-size: 13px;
-        font-weight: 500;
         cursor: pointer;
-        transition: opacity 0.2s;
+        font-size: 12px;
+        font-weight: 600;
+        transition: all 0.15s;
+        font-family: inherit;
       }
-      .popup-btn:hover {
-        opacity: 0.85;
+      .action-btn:active {
+        transform: scale(0.97);
       }
-      .popup-btn.unlock {
-        background: #4caf50;
+      .action-btn-icon {
+        font-size: 22px;
+        line-height: 1;
+      }
+      .action-btn.unlock {
+        background: linear-gradient(135deg, #34d399 0%, #059669 100%);
         color: #fff;
+        box-shadow: 0 4px 14px rgba(52, 211, 153, 0.35);
       }
-      .popup-btn.answer {
-        background: #2196f3;
+      .action-btn.unlock:hover {
+        box-shadow: 0 6px 20px rgba(52, 211, 153, 0.45);
+      }
+      .action-btn.answer {
+        background: linear-gradient(135deg, #60a5fa 0%, #2563eb 100%);
         color: #fff;
+        box-shadow: 0 4px 14px rgba(96, 165, 250, 0.35);
       }
-      .popup-btn.hangup {
-        background: #f44336;
+      .action-btn.answer:hover {
+        box-shadow: 0 6px 20px rgba(96, 165, 250, 0.45);
+      }
+      .action-btn.hangup {
+        background: linear-gradient(135deg, #f87171 0%, #dc2626 100%);
         color: #fff;
+        box-shadow: 0 4px 14px rgba(248, 113, 113, 0.35);
       }
-      .popup-btn:disabled {
-        opacity: 0.4;
-        cursor: default;
-      }
-      .overlay {
-        position: fixed;
-        inset: 0;
-        background: rgba(0,0,0,0.6);
-        z-index: 9998;
+      .action-btn.hangup:hover {
+        box-shadow: 0 6px 20px rgba(248, 113, 113, 0.45);
       }
     `;
   }
 
   setConfig(config) {
-    this._config = config;
-  }
-
-  connectedCallback() {
-    super.connectedCallback();
-    this._listenEvents();
-  }
-
-  disconnectedCallback() {
-    super.disconnectedCallback();
-    if (this._hass) {
-      this._hass.connection.socket.removeEventListener('message', this._onMessage);
-    }
-  }
-
-  _listenEvents() {
-    if (!this._hass) return;
-    const conn = this._hass.connection;
-    if (conn && conn.socket) {
-      conn.socket.addEventListener('message', (e) => this._onMessage(e));
-    }
-  }
-
-  _onMessage(e) {
-    try {
-      const data = JSON.parse(e.data);
-      if (data.type === 'event' && data.event) {
-        const { event } = data.event;
-        if (event && event.event_type === 'uppercoast_doorlock_call_started') {
-          this._showCallPopup = true;
-          this._callActive = true;
-          this._deviceName = event.data.device_name || '';
-          this._displayName = event.data.display_name || '';
-          this._targetIp = event.data.target_ip || '';
-          this._floorLabel = event.data.floor_label || '';
-          this._positionDetail = event.data.position_detail || '';
-        }
-        if (event && event.event_type === 'uppercoast_doorlock_call_ended') {
-          this._showCallPopup = false;
-          this._callActive = false;
-        }
-      }
-    } catch (_) {}
+    this._config = config || {};
+    this._buildingId = this._config.building_id || 'building_1_a';
   }
 
   set hass(hass) {
     this._hass = hass;
-    this._listenEvents();
     this._loadState();
   }
 
-  async _loadState() {
+  _loadState() {
     if (!this._hass) return;
-    const state = this._hass.states['binary_sensor.uppercoast_doorlock_call_active'];
-    if (state) {
-      this._callActive = state.state === 'on';
-      const attrs = state.attributes || {};
-      this._deviceName = attrs.device_name || '';
-      this._displayName = attrs.display_name || '';
-      this._targetIp = attrs.target_ip || '';
-      this._floorLabel = attrs.floor_label || '';
-      this._positionDetail = attrs.position_detail || '';
-      if (this._callActive) {
-        this._showCallPopup = true;
-      }
+    const entityId = 'binary_sensor.uppercoast_doorlock_call_active';
+    const state = this._hass.states[entityId];
+    if (!state) return;
+
+    this._callActive = state.state === 'on';
+    if (this._callActive) {
+      this._showPopup = true;
+      const a = state.attributes || {};
+      this._displayName = a.display_name || '';
+      this._targetIp = a.target_ip || '';
+      this._floorLabel = a.floor_label || '';
+      this._positionDetail = a.position_detail || '';
     }
-    this._fetchCameraFrame();
+
+    // Update active devices from sensor attributes
+    this._activeDevices = this._activeDevices || {};
   }
 
-  async _fetchCameraFrame() {
-    if (!this._hass) return;
-    this._loadingFrame = true;
-    try {
-      const resp = await this._hass.fetchWithAuth('/api/uppercoast_doorlock/frame');
-      if (resp.ok) {
-        const blob = await resp.blob();
-        this._cameraUrl = URL.createObjectURL(blob);
-      }
-    } catch (_) {}
-    this._loadingFrame = false;
+  _getFloorColor(floor) {
+    if (floor.includes('1层') && !floor.includes('-')) return 'floor-1';
+    if (floor.includes('2层')) return 'floor-2';
+    if (floor.includes('-1层')) return 'floor-b1';
+    if (floor.includes('-2层')) return 'floor-b2';
+    return 'floor-1';
+  }
+
+  _getDoorStatus(ip) {
+    if (!ip || !this._hass) return 'offline';
+    const cameraState = this._hass.states['camera.uppercoast_doorlock_camera'];
+    if (!cameraState) return 'offline';
+    if (this._targetIp === ip) return 'current-call';
+    return 'online';
   }
 
   _callService(service) {
     if (!this._hass || !this._targetIp) return;
     this._hass.callService('uppercoast_doorlock', service, {
-      target_ip: this._targetIp
+      target_ip: this._targetIp,
     });
   }
 
   _closePopup() {
-    this._showCallPopup = false;
-    this._callActive = false;
+    this._showPopup = false;
+    // do not reset call state, just hide popup
   }
 
-  _renderDoorItem(name, floor, position, status) {
-    return html`
-      <div class="door-item ${status === 'offline' ? 'offline' : ''}">
-        <div class="door-indicator ${status}"></div>
-        <div class="door-info">
-          <div class="door-name">${name}</div>
-          <div class="door-location">${floor} · ${position}</div>
-        </div>
-      </div>
-    `;
+  _getDoors() {
+    return DOOR_INFO[this._buildingId] || DOOR_INFO['building_1_a'];
   }
 
   render() {
+    const buildingName = BUILDING_NAMES[this._buildingId] || '1栋A座';
+    const doors = this._getDoors();
+
     return html`
-      <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
       <div class="card">
-        <div class="header">
-          <div class="header-title">
-            <span class="header-icon">🏠</span>
-            云海湾门禁系统
+        <div class="card-header">
+          <div class="card-title">
+            <div class="card-title-icon">🏠</div>
+            <div>
+              <div class="card-title-text">云海湾门禁</div>
+              <div class="card-title-sub">${buildingName}</div>
+            </div>
           </div>
           <div class="status-badge ${this._callActive ? 'active' : ''}">
+            <div class="status-dot"></div>
             ${this._callActive ? '呼叫中' : '待机'}
           </div>
         </div>
-        <div class="door-list">
-          ${this._renderDoorItem('1号机', '1层', '车库', 'online')}
-          ${this._renderDoorItem('2号机', '2层', '花园', 'online')}
-          ${this._renderDoorItem('3号机', '-1层', '车库', 'offline')}
-          ${this._renderDoorItem('4号机', '-2层', '车库', 'offline')}
-          ${this._renderDoorItem('5号机', '-1层', '电梯左侧小门左边', 'offline')}
-          ${this._renderDoorItem('6号机', '-1层', '电梯右侧小门右边', 'offline')}
-          ${this._renderDoorItem('7号机', '-2层', '电梯左侧小门左边', 'offline')}
-          ${this._renderDoorItem('8号机', '1层', '电梯正对', 'offline')}
+
+        <div class="door-grid">
+          ${doors.map((door) => {
+            const status = this._getDoorStatus(door.ip);
+            const isCurrentCall = status === 'current-call';
+            return html`
+              <div
+                class="door-btn ${status === 'offline' ? 'offline' : ''} ${isCurrentCall ? 'current-call' : ''}"
+                @click=${() => { if (status !== 'offline') this._monitorDoor(door.ip); }}
+              >
+                <div class="door-btn-floor-strip ${this._getFloorColor(door.floor)}"></div>
+                <div class="door-btn-icon">${this._getDoorEmoji(door.name)}</div>
+                <div class="door-btn-name">${door.name}</div>
+                <div class="door-btn-floor">${door.floor}</div>
+              </div>
+            `;
+          })}
         </div>
       </div>
 
-      ${this._showCallPopup ? html`
-        <div class="overlay" @click=${this._closePopup}></div>
-        <div class="call-popup">
+      ${this._showPopup ? this._renderPopup() : ''}
+    `;
+  }
+
+  _getDoorEmoji(name) {
+    const emoji = { '1号机': '🚗', '2号机': '🌷', '3号机': '🚗', '4号机': '🚗', '5号机': '🚪', '6号机': '🚪', '7号机': '🚪', '8号机': '🏠' };
+    return emoji[name] || '🚪';
+  }
+
+  _monitorDoor(ip) {
+    // TODO: trigger monitor stream
+  }
+
+  _renderPopup() {
+    return html`
+      <div class="popup-overlay" @click=${(e) => { if (e.target === e.currentTarget) this._closePopup(); }}>
+        <div class="popup">
           <div class="popup-header">
-            <span class="popup-title">${this._displayName} 正在呼叫</span>
+            <div class="popup-header-info">
+              <div class="popup-calling-icon">📞</div>
+              <div class="popup-header-text">
+                <div class="popup-calling-label">呼入中</div>
+                <div class="popup-device-name">${this._displayName}</div>
+                <div class="popup-device-location">${this._floorLabel} · ${this._positionDetail}</div>
+              </div>
+            </div>
             <button class="popup-close" @click=${this._closePopup}>✕</button>
           </div>
+
           <div class="popup-video">
-            ${this._cameraUrl
-              ? html`<img src="${this._cameraUrl}" alt="视频" />`
-              : html`<span>正在加载视频...</span>`
-            }
+            <div class="popup-video-overlay">
+              <div class="popup-video-spinner"></div>
+              正在加载视频...
+            </div>
           </div>
+
           <div class="popup-actions">
-            <button class="popup-btn unlock" @click=${() => this._callService('unlock')}>🔓 解锁</button>
-            <button class="popup-btn answer" @click=${() => this._callService('answer')}>📞 接听</button>
-            <button class="popup-btn hangup" @click=${() => this._callService('hangup')}>挂断</button>
+            <button class="action-btn unlock" @click=${() => this._callService('unlock')}>
+              <span class="action-btn-icon">🔓</span>
+              解锁
+            </button>
+            <button class="action-btn answer" @click=${() => this._callService('answer')}>
+              <span class="action-btn-icon">📞</span>
+              接听
+            </button>
+            <button class="action-btn hangup" @click=${() => this._callService('hangup')}>
+              <span class="action-btn-icon">📵</span>
+              挂断
+            </button>
           </div>
         </div>
-      ` : ''}
+      </div>
     `;
   }
 }
