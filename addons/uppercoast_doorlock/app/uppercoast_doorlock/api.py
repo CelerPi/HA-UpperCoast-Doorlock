@@ -36,36 +36,78 @@ def make_api_handler(core: Any, config: IntercomConfig) -> type[BaseHTTPRequestH
                 self.end_headers()
                 self.wfile.write(frame)
                 return
+            if self.path.startswith("/api/monitor/"):
+                parts = self.path.split("/")
+                if len(parts) == 4 and parts[3] in ("start", "stop"):
+                    action = parts[3]
+                    body = self._read_json()
+                    target_ip = body.get("target_ip", "").strip()
+                    if not target_ip:
+                        self._write_json(400, {"ok": False, "error": "missing_target_ip"})
+                        return
+                    if action == "start":
+                        accepted = core.request_monitor_start(str(target_ip))
+                    else:
+                        accepted = core.request_monitor_stop(str(target_ip))
+                    if not accepted:
+                        self._write_json(409, {"ok": False, "error": "monitor_request_rejected"})
+                        return
+                    self._write_json(200, {"ok": True, "action": action, "target_ip": target_ip})
+                    return
             self._write_json(404, {"ok": False, "error": "not_found"})
 
         def do_POST(self) -> None:
-            if self.path not in ("/api/unlock", "/api/answer", "/api/hangup"):
-                self._write_json(404, {"ok": False, "error": "not_found"})
-                return
-            if not self._authorized():
-                self._write_json(403, {"ok": False, "error": "forbidden"})
+            if self.path in ("/api/unlock", "/api/answer", "/api/hangup"):
+                if not self._authorized():
+                    self._write_json(403, {"ok": False, "error": "forbidden"})
+                    return
+
+                body = self._read_json()
+                target_ip = body.get("target_ip") or core.frame_hub.snapshot().get("target_ip")
+                if not target_ip:
+                    self._write_json(409, {"ok": False, "error": "no_active_call"})
+                    return
+
+                if self.path == "/api/unlock":
+                    accepted = core.request_unlock(str(target_ip))
+                    action = "unlock"
+                elif self.path == "/api/answer":
+                    accepted = core.request_answer(str(target_ip))
+                    action = "answer"
+                else:
+                    accepted = core.request_hangup(str(target_ip))
+                    action = "hangup"
+
+                if not accepted:
+                    self._write_json(409, {"ok": False, "error": "request_rejected", "action": action})
+                    return
+                self._write_json(200, {"ok": True, "action": action, "target_ip": target_ip})
                 return
 
-            body = self._read_json()
-            target_ip = body.get("target_ip") or core.frame_hub.snapshot().get("target_ip")
-            if not target_ip:
-                self._write_json(409, {"ok": False, "error": "no_active_call"})
+            if self.path in ("/api/monitor/start", "/api/monitor/stop"):
+                if not self._authorized():
+                    self._write_json(403, {"ok": False, "error": "forbidden"})
+                    return
+
+                body = self._read_json()
+                target_ip = body.get("target_ip", "").strip()
+                if not target_ip:
+                    self._write_json(400, {"ok": False, "error": "missing_target_ip"})
+                    return
+
+                action = "start" if self.path == "/api/monitor/start" else "stop"
+                if action == "start":
+                    accepted = core.request_monitor_start(str(target_ip))
+                else:
+                    accepted = core.request_monitor_stop(str(target_ip))
+
+                if not accepted:
+                    self._write_json(409, {"ok": False, "error": "monitor_request_rejected"})
+                    return
+                self._write_json(200, {"ok": True, "action": action, "target_ip": target_ip})
                 return
 
-            if self.path == "/api/unlock":
-                accepted = core.request_unlock(str(target_ip))
-                action = "unlock"
-            elif self.path == "/api/answer":
-                accepted = core.request_answer(str(target_ip))
-                action = "answer"
-            else:
-                accepted = core.request_hangup(str(target_ip))
-                action = "hangup"
-
-            if not accepted:
-                self._write_json(409, {"ok": False, "error": "request_rejected", "action": action})
-                return
-            self._write_json(200, {"ok": True, "action": action, "target_ip": target_ip})
+            self._write_json(404, {"ok": False, "error": "not_found"})
 
         def log_message(self, _format: str, *_args: Any) -> None:
             return

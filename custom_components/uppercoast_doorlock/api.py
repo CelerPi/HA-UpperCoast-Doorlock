@@ -62,3 +62,23 @@ class UpperCoastDoorlockClient:
                 return None
             resp.raise_for_status()
             return await resp.read()
+
+    async def async_monitor_start(self, target_ip: str) -> dict[str, Any]:
+        async with aiohttp.ClientSession() as session:
+            resp = await session.post(
+                f"{self._base_url}/api/monitor/start",
+                json={"target_ip": target_ip},
+                headers={"Authorization": f"Bearer {self._token}"},
+                timeout=aiohttp.ClientTimeout(total=5),
+            )
+            return await resp.json()
+
+    async def async_monitor_stop(self, target_ip: str) -> dict[str, Any]:
+        async with aiohttp.ClientSession() as session:
+            resp = await session.post(
+                f"{self._base_url}/api/monitor/stop",
+                json={"target_ip": target_ip},
+                headers={"Authorization": f"Bearer {self._token}"},
+                timeout=aiohttp.ClientTimeout(total=5),
+            )
+            return await resp.json()

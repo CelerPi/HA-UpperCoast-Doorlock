@@ -31,3 +31,23 @@ hangup:
       description: 要挂断的门口机IP地址
       example: "192.168.16.225"
       required: false
+
+monitor_start:
+  name: 开始监控
+  description: 主动监控指定门口机
+  fields:
+    target_ip:
+      name: 门口机IP
+      description: 要监控的门口机IP地址
+      example: "192.168.16.225"
+      required: true
+
+monitor_stop:
+  name: 停止监控
+  description: 停止当前监控会话
+  fields:
+    target_ip:
+      name: 门口机IP
+      description: 要停止监控的门口机IP地址
+      example: "192.168.16.225"
+      required: true

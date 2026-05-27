@@ -19,6 +19,8 @@ from .protocol import (
     build_call_audio_payload,
     build_cd_payload,
     build_identity_payload,
+    build_monitor_discovery_payload,
+    build_monitor_request_payload,
     build_session_info_payload,
     build_unlock_payload,
     parse_call_audio_packet,
@@ -108,6 +110,8 @@ class IntercomCore:
         self.tracker = CallStateTracker(config)
         self._unlock_requests: deque[str] = deque()
         self._answer_requests: deque[str] = deque()
+        self._monitor_requests: deque[str] = deque()
+        self._monitor_state: dict[str, Any] = {}
         self._outgoing_audio: deque[tuple[str, bytes]] = deque()
         self._lock = threading.Lock()
         self._stop_event = threading.Event()
@@ -145,6 +149,20 @@ class IntercomCore:
         self.frame_hub.end_call()
         return True
 
+    def request_monitor_start(self, target_ip: str) -> bool:
+        with self._lock:
+            self._monitor_requests.append(target_ip)
+        return True
+
+    def request_monitor_stop(self, target_ip: str) -> bool:
+        if not self._monitoring_active(target_ip):
+            return False
+        self.frame_hub.end_call()
+        return True
+
+    def _monitoring_active(self, target_ip: str) -> bool:
+        return False
+
     def request_outgoing_audio(self, target_ip: str, pcm: bytes) -> bool:
         if not self._is_current_call(target_ip) or not pcm or len(pcm) % 2 != 0:
             return False
@@ -181,6 +199,7 @@ class IntercomCore:
 
                     while not self._stop_event.is_set():
                         self._drain_discovery_replies(discovery_sock)
+                        state = self.run_monitor_timers(state, discovery_sock, session_sock)
                         state = self.run_session_timers(state, discovery_sock, session_sock)
                         state = self.run_unlock_timers(state, session_sock)
                         state = self.run_answer_timers(state, session_sock)
@@ -358,6 +377,37 @@ class IntercomCore:
         if sent:
             state["expires_at"] = max(state["expires_at"], time.monotonic() + CALL_SESSION_SECONDS)
         return state
+
+    def run_monitor_timers(
+        self,
+        state: dict[str, Any],
+        discovery_sock: socket.socket,
+        session_sock: socket.socket,
+    ) -> dict[str, Any]:
+        if self._monitor_requests:
+            target_ip = self._monitor_requests.popleft()
+            device = self._find_device_by_ip(target_ip)
+            if device is not None:
+                self._start_monitor_session(device, discovery_sock, session_sock)
+        return state
+
+    def _find_device_by_ip(self, target_ip: str) -> DoorStation | None:
+        for device in self.config.active_devices:
+            if device.target_ip == target_ip:
+                return device
+        return None
+
+    def _start_monitor_session(
+        self,
+        device: DoorStation,
+        discovery_sock: socket.socket,
+        session_sock: socket.socket,
+    ) -> None:
+        target_discovery = (device.target_ip, MONITOR_DISCOVERY_PORT)
+        target_session = (device.target_ip, TARGET_PORT)
+        discovery_sock.sendto(build_monitor_discovery_payload(device), target_discovery)
+        session_sock.sendto(build_monitor_request_payload(device, self.config.local_ip, self.config.local_id), target_session)
+        self.frame_hub.begin_call(device)
 
     def _is_current_call(self, target_ip: str) -> bool:
         snapshot = self.frame_hub.snapshot()

@@ -2,14 +2,14 @@ import { LitElement, html, css } from 'https://unpkg.com/lit-element@3.3.3/lit-e
 
 const DOOR_INFO = {
   building_1_a: [
-    { name: '1号机', floor: '1层', position: '车库', ip: '192.168.16.224' },
-    { name: '2号机', floor: '2层', position: '花园', ip: '192.168.16.225' },
-    { name: '3号机', floor: '-1层', position: '车库', ip: '192.168.16.226' },
-    { name: '4号机', floor: '-2层', position: '车库', ip: '192.168.16.227' },
-    { name: '5号机', floor: '-1层', position: '电梯左侧小门左边', ip: '192.168.16.228' },
-    { name: '6号机', floor: '-1层', position: '电梯右侧小门右边', ip: '192.168.16.229' },
-    { name: '7号机', floor: '-2层', position: '电梯左侧小门左边', ip: '192.168.23.164' },
-    { name: '8号机', floor: '1层', position: '电梯正对', ip: '192.168.23.165' },
+    { name: '1号机', floor: '1层', position: '车库', ip: '192.168.16.224', door_no: '01' },
+    { name: '2号机', floor: '2层', position: '花园', ip: '192.168.16.225', door_no: '02' },
+    { name: '3号机', floor: '-1层', position: '车库', ip: '192.168.16.226', door_no: '03' },
+    { name: '4号机', floor: '-2层', position: '车库', ip: '192.168.16.227', door_no: '04' },
+    { name: '5号机', floor: '-1层', position: '电梯左侧小门左边', ip: '192.168.16.228', door_no: '05' },
+    { name: '6号机', floor: '-1层', position: '电梯右侧小门右边', ip: '192.168.16.229', door_no: '06' },
+    { name: '7号机', floor: '-2层', position: '电梯左侧小门左边', ip: '192.168.23.164', door_no: '07' },
+    { name: '8号机', floor: '1层', position: '电梯正对', ip: '192.168.23.165', door_no: '08' },
   ],
 };
 
@@ -39,6 +39,9 @@ class DoorlockCard extends LitElement {
       _cameraLoading: { type: Boolean, state: true },
       _activeDevices: { type: Array, state: true },
       _buildingId: { type: String, state: true },
+      _monitorMode: { type: Boolean, state: true },
+      _monitorIp: { type: String, state: true },
+      _monitorTargetIp: { type: String, state: true },
     };
   }
 
@@ -397,6 +400,107 @@ class DoorlockCard extends LitElement {
       .action-btn.hangup:hover {
         box-shadow: 0 6px 20px rgba(248, 113, 113, 0.45);
       }
+
+      /* Monitor popup */
+      .monitor-popup {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.85);
+        backdrop-filter: blur(6px);
+        z-index: 9000;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+      }
+      .monitor-popup-content {
+        width: 100%;
+        max-width: 520px;
+        background: var(--doorlock-card-bg);
+        border: 1px solid var(--doorlock-border);
+        border-radius: 24px;
+        overflow: hidden;
+        backdrop-filter: blur(24px);
+        -webkit-backdrop-filter: blur(24px);
+        box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
+        animation: popupIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+      }
+      .monitor-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 14px 18px;
+        background: rgba(96, 165, 250, 0.1);
+        border-bottom: 1px solid rgba(96, 165, 250, 0.2);
+      }
+      .monitor-header-info {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .monitor-icon {
+        width: 36px;
+        height: 36px;
+        background: rgba(96, 165, 250, 0.2);
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+      }
+      .monitor-title {
+        font-size: 14px;
+        font-weight: 600;
+        color: #f1f5f9;
+      }
+      .monitor-subtitle {
+        font-size: 11px;
+        color: #64748b;
+        margin-top: 1px;
+      }
+      .monitor-video {
+        width: 100%;
+        aspect-ratio: 16 / 9;
+        background: #000;
+        position: relative;
+      }
+      .monitor-video img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+      }
+      .monitor-video-overlay {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        color: rgba(255, 255, 255, 0.4);
+        font-size: 12px;
+        background: rgba(0, 0, 0, 0.4);
+      }
+      .monitor-video-spinner {
+        width: 28px;
+        height: 28px;
+        border: 2px solid rgba(255, 255, 255, 0.15);
+        border-top-color: rgba(255, 255, 255, 0.5);
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+      }
+      .monitor-actions {
+        display: flex;
+        gap: 10px;
+        padding: 14px 16px 16px;
+      }
+      .monitor-loading-text {
+        font-size: 11px;
+        color: #60a5fa;
+        margin-top: 6px;
+      }
     `;
   }
 
@@ -502,6 +606,7 @@ class DoorlockCard extends LitElement {
       </div>
 
       ${this._showPopup ? this._renderPopup() : ''}
+      ${this._monitorMode ? this._renderMonitorPopup() : ''}
     `;
   }
 
@@ -510,8 +615,67 @@ class DoorlockCard extends LitElement {
     return emoji[name] || '🚪';
   }
 
+  _renderMonitorPopup() {
+    const door = this._getDoors().find(d => d.ip === this._monitorTargetIp) || {};
+    return html`
+      <div class="monitor-popup" @click=${(e) => { if (e.target === e.currentTarget) this._closePopup(); }}>
+        <div class="monitor-popup-content">
+          <div class="monitor-header">
+            <div class="monitor-header-info">
+              <div class="monitor-icon">📹</div>
+              <div>
+                <div class="monitor-title">${door.name || '监控中'}</div>
+                <div class="monitor-subtitle">${door.floor || ''} · ${door.position || ''}</div>
+              </div>
+            </div>
+            <button class="popup-close" @click=${this._closePopup}>✕</button>
+          </div>
+
+          <div class="monitor-video">
+            <div class="monitor-video-overlay">
+              <div class="monitor-video-spinner"></div>
+              正在加载视频...
+            </div>
+          </div>
+
+          <div class="monitor-actions">
+            <button class="action-btn unlock" @click=${() => this._callService('unlock')}>
+              <span class="action-btn-icon">🔓</span>
+              解锁
+            </button>
+            <button class="action-btn hangup" @click=${this._closePopup}>
+              <span class="action-btn-icon">📵</span>
+              停止
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
   _monitorDoor(ip) {
-    // TODO: trigger monitor stream
+    this._monitorTargetIp = ip;
+    this._monitorMode = true;
+    this._showPopup = false;
+    this._cameraLoading = true;
+    if (this._hass) {
+      this._hass.callService('uppercoast_doorlock', 'monitor_start', { target_ip: ip });
+    }
+  }
+
+  _stopMonitor() {
+    if (this._monitorTargetIp && this._hass) {
+      this._hass.callService('uppercoast_doorlock', 'monitor_stop', { target_ip: this._monitorTargetIp });
+    }
+    this._monitorMode = false;
+    this._monitorTargetIp = '';
+  }
+
+  _closePopup() {
+    this._showPopup = false;
+    if (this._monitorMode) {
+      this._stopMonitor();
+    }
   }
 
   _renderPopup() {
