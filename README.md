@@ -61,9 +61,11 @@ curl -fsSL https://raw.githubusercontent.com/CelerPi/HA-UpperCoast-Doorlock/main
    | `building_id` | 你的楼栋 | `1栋A座` |
    | `local_ip` | HA 主机在门禁网络中的 IP | `192.168.16.64` |
    | `local_id` | 室内机 ID（房号对应的设备编号）| `00010116010` |
-   | `center_ip` | 门禁管理中心 IP | `192.168.16.2` |
-   | `property_center_ip` | 物业中心机 IP | `192.168.16.3` |
    | `api_token` | API 访问令牌 | `1234` |
+
+   > 中心地址（`192.168.16.2`）和物业中心机地址（`192.168.16.3`）为本小区固定值，已内置在 Addon 代码中，无需在配置页填写。如果你的小区网络环境不同，请手动编辑 Addon 目录下的 `app/uppercoast_doorlock/config.py`，修改 `DEFAULT_CENTER_IP` 和 `DEFAULT_PROPERTY_CENTER_IP` 常量后重新安装 Addon。
+
+   > **自定义号机覆盖**：默认情况下 Addon 会根据楼栋自动加载门口机 IP。如果你需要覆盖某些号机，在 `custom_device_overrides` 中添加，格式为 `号机编号:IP地址`（如 `01:192.168.16.224`）。Addon 启动时会自动校验号机是否属于当前楼栋，格式错误或号机不合法的项会被忽略并记录日志。不需要覆盖的号机留空即可。
 
 7. 点击 **保存**，然后切换到 **信息** 标签页，点击 **启动**
 8. 在 **日志** 中确认看到类似以下内容，表示 Addon 启动成功：
@@ -205,8 +207,9 @@ curl -fsSL https://raw.githubusercontent.com/CelerPi/HA-UpperCoast-Doorlock/main
 
 ### 4. 实体 ID 是拼音或过长
 
-- 确保安装的是 Integration v0.1.4 或更高版本
-- 已使用 `translation_key` + `has_entity_name = True`，实体 ID 应为英文简写（如 `vds_call_status`）
+- 确保安装的是 Integration v0.1.5 或更高版本
+- 已使用 `translation_key` + `has_entity_name = True` + `_attr_suggested_object_id`，实体 ID 固定为英文简写（如 `vds_call_status`）
+- 升级后建议删除旧集成条目并重新添加，以清除 entity registry 中的缓存
 
 ---
 
