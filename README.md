@@ -1,7 +1,7 @@
 # 云海湾门禁系统 — 安装指南
 
 ![version](https://img.shields.io/badge/release-v0.1.9-blue)
-![ha-version](https://img.shields.io/badge/HA-2024.11.0%2B-41BDF5)
+![ha-version](https://img.shields.io/badge/HA-2026.5.0%2B-41BDF5)
 
 完整的新手安装教程，覆盖 Addon、Integration（集成）和 Lovelace 卡片（Dashboard）三件套的一键安装与手动安装方式。
 
@@ -11,7 +11,7 @@
 
 | 项目 | 要求 |
 |------|------|
-| Home Assistant | 2024.11.0 或更高版本（**HAOS / Supervisor 推荐**）|
+| Home Assistant | 2026.5.0 或更高版本（**HAOS / Supervisor 推荐**）|
 | HACS | 已安装并正常运行 |
 | 网络 | Addon 需使用 HA 主机的实际 IP（不能填 localhost）|
 
@@ -58,7 +58,7 @@ curl -fsSL https://raw.githubusercontent.com/CelerPi/HA-UpperCoast-Doorlock/main
 
    | 参数 | 说明 | 示例 |
    |------|------|------|
-   | `building_id` | 你的楼栋 | `1栋A座` |
+   | `building_id` | 你的楼栋 | `1A`（对应1栋A座） |
    | `local_ip` | HA 主机在门禁网络中的 IP | `192.168.16.64` |
    | `local_id` | 室内机 ID（房号对应的设备编号）| `00010116010` |
    | `api_token` | API 访问令牌 | `1234` |
