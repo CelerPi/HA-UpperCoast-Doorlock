@@ -35,7 +35,7 @@ detect_env() {
     elif [ -d "$HOME/.homeassistant" ]; then
         CONFIG_DIR="$HOME/.homeassistant"
         ADDONS_DIR=""
-        warn "检测到 Core (venv) 环境，Addon 需要手动安装"
+        warn "检测到 Core (venv) 环境，App 需要手动安装"
     elif [ -d "/usr/src/homeassistant" ]; then
         CONFIG_DIR="/config"
         ADDONS_DIR="/addons"
@@ -50,7 +50,7 @@ detect_env() {
 
     info "配置目录: ${CONFIG_DIR}"
     if [ -n "${ADDONS_DIR}" ]; then
-        info "加载项目录: ${ADDONS_DIR}"
+        info "应用目录: ${ADDONS_DIR}"
     fi
 }
 
@@ -145,48 +145,37 @@ install_integration() {
     success "Integration 已安装到: ${dest}"
 }
 
-# 安装 Addon
-install_addon() {
+# 安装 App
+install_app() {
     if [ -z "${ADDONS_DIR}" ]; then
-        warn "当前环境不支持自动安装 Addon，请手动在 UI 中添加仓库："
+        warn "当前环境不支持自动安装 App，请手动在 UI 中添加仓库："
         echo "  ${ADDON_REPO}"
         return 0
     fi
 
-    info "========== 安装 Addon（加载项） =========="
+    info "========== 安装 App（应用） =========="
     local dest="${ADDONS_DIR}/uppercoast_doorlock"
 
     if [ -d "$dest" ]; then
-        warn "Addon 已存在，将覆盖更新"
+        warn "App 已存在，将覆盖更新"
         rm -rf "$dest"
     fi
 
-    local tmpdir="/tmp/uppercoast-addon"
-    download_repo "$ADDON_REPO" "$tmpdir" "uppercoast-addon"
+    local tmpdir="/tmp/uppercoast-app"
+    download_repo "$ADDON_REPO" "$tmpdir" "uppercoast-app"
 
-    # Addon 仓库结构通常是 addons/uppercoast_doorlock/
-    if [ -d "${tmpdir}/addons/uppercoast_doorlock" ]; then
-        cp -r "${tmpdir}/addons/uppercoast_doorlock" "$dest"
-    elif [ -f "${tmpdir}/config.yaml" ]; then
-        # 有些仓库根目录就是 addon
+    # 仓库已扁平化，App 文件直接在根目录
+    if [ -f "${tmpdir}/config.yaml" ]; then
         cp -r "$tmpdir" "$dest"
     else
-        local found
-        found=$(find "$tmpdir" -type f -name "config.yaml" | head -n 1)
-        if [ -n "$found" ]; then
-            local addon_root
-            addon_root=$(dirname "$found")
-            cp -r "$addon_root" "$dest"
-        else
-            error "无法在下载的 Addon 包中找到 config.yaml"
-            rm -rf "$tmpdir"
-            return 1
-        fi
+        error "无法找到 config.yaml，仓库结构异常"
+        rm -rf "$tmpdir"
+        return 1
     fi
 
     rm -rf "$tmpdir"
-    success "Addon 已安装到: ${dest}"
-    info "请进入 Home Assistant → 设置 → 加载项 → 加载项商店 → 右上角 ⋮ → 重新加载"
+    success "App 已安装到: ${dest}"
+    info "请进入 Home Assistant → 设置 → 应用 → 应用商店 → 右上角 ⋮ → 重新加载"
     info "然后找到「虚拟门禁系统」并安装启动"
 }
 
@@ -285,7 +274,7 @@ main() {
 
     install_integration
     echo ""
-    install_addon
+    install_app
     echo ""
     install_card
     echo ""
@@ -299,10 +288,10 @@ main() {
     echo "1. 重启 Home Assistant"
     echo "   - HAOS: 设置 → 系统 → 重新启动"
     echo ""
-    echo "2. 配置 Addon"
-    echo "   - 设置 → 加载项 → 虚拟门禁系统 → 配置"
+    echo "2. 配置 App"
+    echo "   - 设置 → 应用 → 虚拟门禁系统 → 配置"
     echo "   - 填写 building_id、local_ip、local_id 等参数"
-    echo "   - 保存并启动 Addon"
+    echo "   - 保存并启动 App"
     echo ""
     echo "3. 配置 Integration"
     echo "   - 设置 → 设备与服务 → 添加集成 → 搜索「虚拟门禁系统」"

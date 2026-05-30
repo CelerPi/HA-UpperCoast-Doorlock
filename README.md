@@ -3,7 +3,7 @@
 ![version](https://img.shields.io/badge/release-v0.1.9-blue)
 ![ha-version](https://img.shields.io/badge/HA-2026.5.0%2B-41BDF5)
 
-完整的新手安装教程，覆盖 Addon、Integration（集成）和 Lovelace 卡片（Dashboard）三件套的一键安装与手动安装方式。
+完整的新手安装教程，覆盖 App（应用）、Integration（集成）和 Lovelace 卡片（Dashboard）三件套的一键安装与手动安装方式。
 
 ---
 
@@ -13,7 +13,7 @@
 |------|------|
 | Home Assistant | 2026.5.0 或更高版本（**HAOS / Supervisor 推荐**）|
 | HACS | 已安装并正常运行 |
-| 网络 | Addon 需使用 HA 主机的实际 IP（不能填 localhost）|
+| 网络 | App 需使用 HA 主机的实际 IP（不能填 localhost）|
 
 > 如果你还没装 HACS，先去 https://hacs.xyz 按官方教程安装。
 
@@ -31,7 +31,7 @@ curl -fsSL https://raw.githubusercontent.com/CelerPi/HA-UpperCoast-Doorlock/main
 脚本会自动完成以下操作：
 
 1. 下载并安装 Integration 到 `/config/custom_components/uppercoast_doorlock/`
-2. 下载 Addon 到 `/addons/uppercoast_doorlock/`
+2. 下载 App 到 `/addons/uppercoast_doorlock/`
 3. 下载 Card JS 文件到 `/config/www/HA-UpperCoast-DoorLock-Card.js`
 4. 注册前端资源到 Lovelace
 5. 提示你重启 Home Assistant
@@ -44,13 +44,13 @@ curl -fsSL https://raw.githubusercontent.com/CelerPi/HA-UpperCoast-Doorlock/main
 
 如果一键脚本不适用，请按以下步骤手动安装。
 
-### 第一步：安装 Addon（加载项）
+### 第一步：安装 App（应用）
 
-1. 打开 Home Assistant，进入 **设置 → 加载项 → 加载项商店**
+1. 打开 Home Assistant，进入 **设置 → 应用 → 应用商店**
 2. 点击右上角菜单 **⋮ → 仓库**
 3. 添加仓库地址：
    ```
-   https://github.com/CelerPi/HA-UpperCoast-DoorLock-addon
+   https://github.com/CelerPi/HA-UpperCoast-DoorLock-Addon
    ```
 4. 点击 **添加 → 关闭**
 5. 商店列表会自动刷新，找到 **虚拟门禁系统**，点击 **安装**
@@ -63,12 +63,12 @@ curl -fsSL https://raw.githubusercontent.com/CelerPi/HA-UpperCoast-Doorlock/main
    | `local_id` | 室内机 ID（房号对应的设备编号）| `00010116010` |
    | `api_token` | API 访问令牌 | `1234` |
 
-   > 中心地址（`192.168.16.2`）和物业中心机地址（`192.168.16.3`）为本小区固定值，已内置在 Addon 代码中，无需在配置页填写。如果你的小区网络环境不同，请手动编辑 Addon 目录下的 `app/uppercoast_doorlock/config.py`，修改 `DEFAULT_CENTER_IP` 和 `DEFAULT_PROPERTY_CENTER_IP` 常量后重新安装 Addon。
+   > 中心地址（`192.168.16.2`）和物业中心机地址（`192.168.16.3`）为本小区固定值，已内置在 App 代码中，无需在配置页填写。如果你的小区网络环境不同，请手动编辑 App 目录下的 `app/uppercoast_doorlock/config.py`，修改 `DEFAULT_CENTER_IP` 和 `DEFAULT_PROPERTY_CENTER_IP` 常量后重新安装 App。
 
-   > **自定义号机覆盖**：默认情况下 Addon 会根据楼栋自动加载门口机 IP。如果你需要覆盖某些号机，在 `custom_device_overrides` 中添加，格式为 `号机编号:IP地址`（如 `01:192.168.16.224`）。Addon 启动时会自动校验号机是否属于当前楼栋，格式错误或号机不合法的项会被忽略并记录日志。不需要覆盖的号机留空即可。
+   > **自定义号机覆盖**：默认情况下 App 会根据楼栋自动加载门口机 IP。如果你需要覆盖某些号机，在 `custom_device_overrides` 中添加，格式为 `号机编号:IP地址`（如 `01:192.168.16.224`）。App 启动时会自动校验号机是否属于当前楼栋，格式错误或号机不合法的项会被忽略并记录日志。不需要覆盖的号机留空即可。
 
 7. 点击 **保存**，然后切换到 **信息** 标签页，点击 **启动**
-8. 在 **日志** 中确认看到类似以下内容，表示 Addon 启动成功：
+8. 在 **日志** 中确认看到类似以下内容，表示 App 启动成功：
    ```
    门禁系统后端已启动
    楼栋：1栋A座；已加载门口机：8 个
@@ -106,9 +106,9 @@ curl -fsSL https://raw.githubusercontent.com/CelerPi/HA-UpperCoast-Doorlock/main
 1. 重启后，进入 **设置 → 设备与服务 → 添加集成**
 2. 搜索 **虚拟门禁系统**，点击添加
 3. 在配置页面填写：
-   - **Host**：Addon 的访问地址，即 HA 主机的实际 IP（如 `192.168.16.64`）
-   - **Port**：`8099`（Addon 默认端口）
-   - **Token**：与 Addon 配置中的 `api_token` 保持一致
+   - **Host**：App 的访问地址，即 HA 主机的实际 IP（如 `192.168.16.64`）
+   - **Port**：`8099`（App 默认端口）
+   - **Token**：与 App 配置中的 `api_token` 保持一致
 4. 点击 **提交**，系统会自动测试连接
 5. 连接成功后，你会看到 Integration 创建了以下实体：
    - `binary_sensor.vds_call_status` — 呼叫状态
@@ -117,7 +117,7 @@ curl -fsSL https://raw.githubusercontent.com/CelerPi/HA-UpperCoast-Doorlock/main
    - `button.vds_answer` — 接听按钮
    - `button.vds_hangup` — 挂断按钮
 
-> **常见问题**：如果提示连接失败，检查 Addon 是否已启动、Host 是否填的是 HA 主机实际 IP、防火墙是否放行 8099 端口。
+> **常见问题**：如果提示连接失败，检查 App 是否已启动、Host 是否填的是 HA 主机实际 IP、防火墙是否放行 8099 端口。
 
 ---
 
@@ -178,7 +178,7 @@ curl -fsSL https://raw.githubusercontent.com/CelerPi/HA-UpperCoast-Doorlock/main
 
 1. **卡片显示**：首页显示「云海湾门禁」卡片，右上角状态为「待机」
 2. **监控功能**：点击「监控」→ 选择任意号机 → 能看到视频画面 → 点击「停止监控」返回选择页
-3. **对讲拨号**：点击「对讲」→ 拨号盘输入房号 → 点击「呼叫」（目前仅记录通话历史，实际呼叫需等待 Addon 后续支持）
+3. **对讲拨号**：点击「对讲」→ 拨号盘输入房号 → 点击「呼叫」（目前仅记录通话历史，实际呼叫需等待 App 后续支持）
 4. **呼入测试**：让门口机呼叫你的室内机，HA 应自动弹出视频弹窗，显示「呼入中」，可点击「接听」「解锁」「挂断」
 
 ---
@@ -189,13 +189,13 @@ curl -fsSL https://raw.githubusercontent.com/CelerPi/HA-UpperCoast-Doorlock/main
 
 - 确认 Integration 已添加且状态正常
 - 检查 `binary_sensor.vds_call_status` 实体是否存在
-- 查看 Addon 日志确认已正常启动
+- 查看 App 日志确认已正常启动
 - 确认 Integration 配置的 Host 是 HA 主机实际 IP，不是 `localhost`
 
 ### 2. 监控页面显示 "暂无门口机数据"
 
-- 确认 Addon 已启动且日志显示「已加载门口机 X 个」
-- 确认 Addon 的 `building_id` 配置正确，号机数量不为 0
+- 确认 App 已启动且日志显示「已加载门口机 X 个」
+- 确认 App 的 `building_id` 配置正确，号机数量不为 0
 - 在浏览器 F12 → Console 中查看调试信息
 
 ### 3. 提示 "Custom element doesn't exist: doorlock-card"
@@ -219,7 +219,7 @@ curl -fsSL https://raw.githubusercontent.com/CelerPi/HA-UpperCoast-Doorlock/main
 
 | 组件 | 更新方式 |
 |------|----------|
-| Addon | 加载项页面 → **虚拟门禁系统** → 右上角 ⋮ → **重新安装** |
+| App | 应用页面 → **虚拟门禁系统** → 右上角 ⋮ → **重新安装** |
 | Integration | HACS → 集成 → 找到对应仓库 → **重新下载** → 重启 HA |
 | Card | HACS → 前端 → 找到对应仓库 → **重新下载** → 刷新浏览器 |
 
@@ -231,7 +231,7 @@ curl -fsSL https://raw.githubusercontent.com/CelerPi/HA-UpperCoast-Doorlock/main
 |------|------|
 | [HA-UpperCoast-Doorlock](https://github.com/CelerPi/HA-UpperCoast-Doorlock) | 本仓库，安装指南 |
 | [HA-UpperCoast-Doorlock-Integration](https://github.com/CelerPi/HA-UpperCoast-Doorlock-Integration) | 集成（Integration）源码 |
-| [HA-UpperCoast-DoorLock-Addon](https://github.com/CelerPi/HA-UpperCoast-DoorLock-addon) | Addon 源码 |
+| [HA-UpperCoast-DoorLock-App](https://github.com/CelerPi/HA-UpperCoast-DoorLock-addon) | App 源码 |
 | [HA-UpperCoast-DoorLock-Card](https://github.com/CelerPi/HA-UpperCoast-DoorLock-Card) | Dashboard 卡片源码 |
 
 ## License
