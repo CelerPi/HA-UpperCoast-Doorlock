@@ -45,7 +45,11 @@ import time
 TARGET_PORT = 10000
 DISCOVERY_PORT = 10008
 PENGUIN_HEADER = b"PENGUIN0"
-DEFAULT_FRAGMENT_SIZE = 1200
+DEFAULT_WIDTH = 128
+DEFAULT_HEIGHT = 96
+DEFAULT_JPEG_QUALITY = 31
+DEFAULT_FRAGMENT_SIZE = 1400
+DEFAULT_MAX_JPEG_BYTES = 1250
 
 # 呼叫触发命令字（与 call_state.py 中的 CALL_TRIGGER_COMMANDS 一致）
 CALL_TRIGGERS = {
@@ -69,11 +73,21 @@ TEST_JPEG = base64.b64decode(
 class VideoFrameSource:
     """使用 ffmpeg 输出连续 MJPEG 帧；失败时回退静态 JPEG。"""
 
-    def __init__(self, video_path=None, fps=5, width=320, height=240):
+    def __init__(
+        self,
+        video_path=None,
+        fps=5,
+        width=DEFAULT_WIDTH,
+        height=DEFAULT_HEIGHT,
+        jpeg_quality=DEFAULT_JPEG_QUALITY,
+        max_jpeg_bytes=DEFAULT_MAX_JPEG_BYTES,
+    ):
         self.video_path = video_path
         self.fps = fps
         self.width = width
         self.height = height
+        self.jpeg_quality = jpeg_quality
+        self.max_jpeg_bytes = max_jpeg_bytes
         self.proc = None
         self.buffer = bytearray()
 
@@ -97,7 +111,7 @@ class VideoFrameSource:
                 "-an",
                 "-f", "image2pipe",
                 "-vcodec", "mjpeg",
-                "-q:v", "7",
+                "-q:v", str(self.jpeg_quality),
                 "pipe:1",
             ]
             label = self.video_path
@@ -113,13 +127,13 @@ class VideoFrameSource:
                 "-i", source,
                 "-f", "image2pipe",
                 "-vcodec", "mjpeg",
-                "-q:v", "7",
+                "-q:v", str(self.jpeg_quality),
                 "pipe:1",
             ]
             label = "ffmpeg testsrc2 动态测试画面"
 
         self.proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        print(f"[视频] 使用 {label}")
+        print(f"[视频] 使用 {label} ({self.width}x{self.height}, q={self.jpeg_quality})")
 
     def read_frame(self):
         if not self.proc or not self.proc.stdout:
@@ -131,6 +145,12 @@ class VideoFrameSource:
             if start >= 0 and end >= 0:
                 frame = bytes(self.buffer[start:end + 2])
                 del self.buffer[:end + 2]
+                if len(frame) > self.max_jpeg_bytes:
+                    print(
+                        f"\n[视频] 当前 JPEG {len(frame)} bytes 超过单包目标 "
+                        f"{self.max_jpeg_bytes} bytes，跳过这一帧。"
+                    )
+                    continue
                 return frame
 
             chunk = self.proc.stdout.read(4096)
@@ -258,8 +278,12 @@ def main():
     parser.add_argument("--trigger", choices=["cd", "98", "b7"], default="cd", help="触发命令字")
     parser.add_argument("--video", help="用于模拟门口机画面的视频文件；不填则生成动态测试画面")
     parser.add_argument("--fps", type=int, default=5, help="模拟视频帧率，默认 5fps")
+    parser.add_argument("--width", type=int, default=DEFAULT_WIDTH, help="视频宽度，默认 128")
+    parser.add_argument("--height", type=int, default=DEFAULT_HEIGHT, help="视频高度，默认 96")
+    parser.add_argument("--jpeg-quality", type=int, default=DEFAULT_JPEG_QUALITY, help="MJPEG 质量参数，越大体积越小，默认 31")
+    parser.add_argument("--max-jpeg-bytes", type=int, default=DEFAULT_MAX_JPEG_BYTES, help="单帧 JPEG 最大字节数，默认 1250")
     parser.add_argument("--tone", type=int, default=440, help="测试音频频率 Hz，默认 440；设为 0 则静音")
-    parser.add_argument("--fragment-size", type=int, default=DEFAULT_FRAGMENT_SIZE, help="IP 分片大小，默认 1200")
+    parser.add_argument("--fragment-size", type=int, default=DEFAULT_FRAGMENT_SIZE, help="IP 分片阈值，默认 1400")
     args = parser.parse_args()
 
     target_ip = args.target
@@ -268,6 +292,10 @@ def main():
     door_no = args.door_no
     duration = args.duration
     fps = max(1, args.fps)
+    width = max(64, args.width)
+    height = max(48, args.height)
+    jpeg_quality = min(31, max(2, args.jpeg_quality))
+    max_jpeg_bytes = max(600, args.max_jpeg_bytes)
     fragment_size = max(576, args.fragment_size)
     trigger_cmd = CALL_TRIGGERS[args.trigger]
     device_id = f"M000101{door_no}000"
@@ -283,6 +311,9 @@ def main():
     print(f"  触发命令:      {trigger_cmd.hex()}")
     print(f"  持续时间:      {duration} 秒")
     print(f"  模拟帧率:      {fps} fps")
+    print(f"  视频尺寸:      {width}x{height}")
+    print(f"  JPEG质量参数:  {jpeg_quality}")
+    print(f"  单帧上限:      {max_jpeg_bytes} bytes")
     print(f"  测试视频:      {args.video or '动态测试画面'}")
     print(f"  测试音频:      {'静音' if args.tone <= 0 else str(args.tone) + ' Hz'}")
     print(f"  分片大小:      {fragment_size} bytes")
@@ -320,7 +351,14 @@ def main():
     print("         Home Assistant 应该弹出「呼入中」弹窗")
     print("         按 Ctrl+C 提前结束\n")
 
-    video_source = VideoFrameSource(args.video, fps=fps)
+    video_source = VideoFrameSource(
+        args.video,
+        fps=fps,
+        width=width,
+        height=height,
+        jpeg_quality=jpeg_quality,
+        max_jpeg_bytes=max_jpeg_bytes,
+    )
     tone_source = ToneSource(frequency=args.tone)
     video_source.start()
     samples_per_frame = max(160, int(8000 / fps))
