@@ -51,6 +51,7 @@ DEFAULT_FPS = 1
 DEFAULT_JPEG_QUALITY = 18
 DEFAULT_FRAGMENT_SIZE = 1400
 DEFAULT_VIDEO_PART_BYTES = 1000
+DEFAULT_AUDIO_SAMPLES_PER_PACKET = 256
 
 # 呼叫触发命令字（与 call_state.py 中的 CALL_TRIGGER_COMMANDS 一致）
 CALL_TRIGGERS = {
@@ -275,8 +276,8 @@ def send_video_frame(
     return total_parts
 
 
-def send_audio(device_id, door_ip, local_id, local_ip, target_ip, pcm, fragment_size=DEFAULT_FRAGMENT_SIZE):
-    hdr = struct.pack("<HHHHH", 3, 1, 1, 1, len(pcm))
+def send_audio(device_id, door_ip, local_id, local_ip, target_ip, pcm, sequence, fragment_size=DEFAULT_FRAGMENT_SIZE):
+    hdr = struct.pack("<HHHHH", 3, sequence & 0xFFFF or 1, 1, 1, len(pcm))
     pkt = build_penguin_packet("b7000a00", 90 + len(pcm), device_id, door_ip, local_id, local_ip, hdr + pcm)
     send_packet_scapy(pkt, door_ip, TARGET_PORT, target_ip, TARGET_PORT, fragment_size)
 
@@ -296,6 +297,7 @@ def main():
     parser.add_argument("--jpeg-quality", type=int, default=DEFAULT_JPEG_QUALITY, help="MJPEG 质量参数，越大体积越小，默认 18")
     parser.add_argument("--max-jpeg-bytes", type=int, help="单帧 JPEG 最大字节数；默认不限制")
     parser.add_argument("--video-part-bytes", type=int, default=DEFAULT_VIDEO_PART_BYTES, help="协议内视频分片大小，默认 1000")
+    parser.add_argument("--audio-samples", type=int, default=DEFAULT_AUDIO_SAMPLES_PER_PACKET, help="每个音频包的 PCM 采样数，默认 256")
     parser.add_argument("--tone", type=int, default=440, help="测试音频频率 Hz，默认 440；设为 0 则静音")
     parser.add_argument("--fragment-size", type=int, default=DEFAULT_FRAGMENT_SIZE, help="IP 分片阈值，默认 1400")
     args = parser.parse_args()
@@ -311,6 +313,7 @@ def main():
     jpeg_quality = min(31, max(2, args.jpeg_quality))
     max_jpeg_bytes = max(600, args.max_jpeg_bytes) if args.max_jpeg_bytes else None
     video_part_bytes = max(256, args.video_part_bytes)
+    audio_samples = max(80, args.audio_samples)
     fragment_size = max(576, args.fragment_size)
     trigger_cmd = CALL_TRIGGERS[args.trigger]
     device_id = f"M000101{door_no}000"
@@ -330,6 +333,7 @@ def main():
     print(f"  JPEG质量参数:  {jpeg_quality}")
     print(f"  单帧上限:      {str(max_jpeg_bytes) + ' bytes' if max_jpeg_bytes else '不限制'}")
     print(f"  视频分片:      {video_part_bytes} bytes/part")
+    print(f"  音频包大小:    {audio_samples} samples/packet")
     print(f"  测试视频:      {args.video or '动态测试画面'}")
     print(f"  测试音频:      {'静音' if args.tone <= 0 else str(args.tone) + ' Hz'}")
     print(f"  分片大小:      {fragment_size} bytes")
@@ -377,7 +381,9 @@ def main():
     )
     tone_source = ToneSource(frequency=args.tone)
     video_source.start()
-    samples_per_frame = max(160, int(8000 / fps))
+    audio_packets_per_frame = max(1, math.ceil(8000 / fps / audio_samples))
+    audio_sleep = max(0.0, (1 / fps) / audio_packets_per_frame)
+    audio_sequence = 0
     frame_no = 0
     try:
         while frame_no < duration * fps:
@@ -385,7 +391,6 @@ def main():
             elapsed = frame_no / fps
 
             jpeg = video_source.read_frame()
-            pcm = b"\x00" * (samples_per_frame * 2) if args.tone <= 0 else tone_source.read_pcm(samples_per_frame)
             parts = send_video_frame(
                 device_id,
                 door_ip,
@@ -397,14 +402,17 @@ def main():
                 video_part_bytes,
                 fragment_size,
             )
-            send_audio(device_id, door_ip, local_id, local_ip, target_ip, pcm, fragment_size)
+            for _ in range(audio_packets_per_frame):
+                audio_sequence += 1
+                pcm = b"\x00" * (audio_samples * 2) if args.tone <= 0 else tone_source.read_pcm(audio_samples)
+                send_audio(device_id, door_ip, local_id, local_ip, target_ip, pcm, audio_sequence, fragment_size)
+                time.sleep(audio_sleep)
 
             print(
-                f"\r  [流] 帧 #{frame_no}  {len(jpeg)} bytes/{parts} parts  ({elapsed:.1f}s/{duration}s)",
+                f"\r  [流] 帧 #{frame_no}  {len(jpeg)} bytes/{parts} parts  音频 {audio_packets_per_frame} 包  ({elapsed:.1f}s/{duration}s)",
                 end="",
                 flush=True,
             )
-            time.sleep(1 / fps)
     except KeyboardInterrupt:
         pass
     finally:
