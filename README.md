@@ -1,6 +1,6 @@
 # 云海湾门禁系统 — 安装指南
 
-![version](https://img.shields.io/badge/release-v0.1.9-blue)
+![version](https://img.shields.io/badge/release-v0.2.0-blue)
 ![ha-version](https://img.shields.io/badge/HA-2026.5.0%2B-41BDF5)
 
 完整的新手安装教程，覆盖 App（应用）、Integration（集成）和 Lovelace 卡片（Dashboard）三件套的一键安装与手动安装方式。
