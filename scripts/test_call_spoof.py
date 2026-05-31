@@ -45,6 +45,7 @@ import time
 TARGET_PORT = 10000
 DISCOVERY_PORT = 10008
 PENGUIN_HEADER = b"PENGUIN0"
+DEFAULT_FRAGMENT_SIZE = 1200
 
 # 呼叫触发命令字（与 call_state.py 中的 CALL_TRIGGER_COMMANDS 一致）
 CALL_TRIGGERS = {
@@ -171,15 +172,18 @@ class ToneSource:
         return bytes(pcm)
 
 
-def send_packet_scapy(payload, src_ip, src_port, dst_ip, dst_port):
+def send_packet_scapy(payload, src_ip, src_port, dst_ip, dst_port, fragment_size=DEFAULT_FRAGMENT_SIZE):
     """使用 scapy 发送伪造源 IP 的 UDP 包。"""
     try:
-        from scapy.all import IP, UDP, Raw, send
+        from scapy.all import IP, UDP, Raw, fragment, raw, send
     except ImportError:
         print("错误: 未安装 scapy。请执行: pip3 install scapy")
         sys.exit(1)
     packet = IP(src=src_ip, dst=dst_ip) / UDP(sport=src_port, dport=dst_port) / Raw(payload)
-    send(packet, verbose=0)
+    if len(raw(packet)) > fragment_size:
+        send(fragment(packet, fragsize=fragment_size), verbose=0)
+    else:
+        send(packet, verbose=0)
 
 
 def build_penguin_packet(command_hex, payload_length, device_id, device_ip, local_id, local_ip, extra=b""):
@@ -232,16 +236,16 @@ def send_trigger(cmd, device_id, door_ip, local_id, local_ip, target_ip):
     print(f"  [呼叫] 触发包 {cmd.hex()} {door_ip}:{TARGET_PORT} -> {target_ip}:{TARGET_PORT}")
 
 
-def send_video_frame(device_id, door_ip, local_id, local_ip, target_ip, jpeg):
+def send_video_frame(device_id, door_ip, local_id, local_ip, target_ip, jpeg, fragment_size=DEFAULT_FRAGMENT_SIZE):
     hdr = struct.pack("<HHHHH", 1, 1, 1, 1, len(jpeg))
     pkt = build_penguin_packet("b7000a00", 90 + len(jpeg), device_id, door_ip, local_id, local_ip, hdr + jpeg)
-    send_packet_scapy(pkt, door_ip, TARGET_PORT, target_ip, TARGET_PORT)
+    send_packet_scapy(pkt, door_ip, TARGET_PORT, target_ip, TARGET_PORT, fragment_size)
 
 
-def send_audio(device_id, door_ip, local_id, local_ip, target_ip, pcm):
+def send_audio(device_id, door_ip, local_id, local_ip, target_ip, pcm, fragment_size=DEFAULT_FRAGMENT_SIZE):
     hdr = struct.pack("<HHHHH", 3, 1, 1, 1, len(pcm))
     pkt = build_penguin_packet("b7000a00", 90 + len(pcm), device_id, door_ip, local_id, local_ip, hdr + pcm)
-    send_packet_scapy(pkt, door_ip, TARGET_PORT, target_ip, TARGET_PORT)
+    send_packet_scapy(pkt, door_ip, TARGET_PORT, target_ip, TARGET_PORT, fragment_size)
 
 
 def main():
@@ -255,6 +259,7 @@ def main():
     parser.add_argument("--video", help="用于模拟门口机画面的视频文件；不填则生成动态测试画面")
     parser.add_argument("--fps", type=int, default=5, help="模拟视频帧率，默认 5fps")
     parser.add_argument("--tone", type=int, default=440, help="测试音频频率 Hz，默认 440；设为 0 则静音")
+    parser.add_argument("--fragment-size", type=int, default=DEFAULT_FRAGMENT_SIZE, help="IP 分片大小，默认 1200")
     args = parser.parse_args()
 
     target_ip = args.target
@@ -263,6 +268,7 @@ def main():
     door_no = args.door_no
     duration = args.duration
     fps = max(1, args.fps)
+    fragment_size = max(576, args.fragment_size)
     trigger_cmd = CALL_TRIGGERS[args.trigger]
     device_id = f"M000101{door_no}000"
     local_ip = target_ip
@@ -279,6 +285,7 @@ def main():
     print(f"  模拟帧率:      {fps} fps")
     print(f"  测试视频:      {args.video or '动态测试画面'}")
     print(f"  测试音频:      {'静音' if args.tone <= 0 else str(args.tone) + ' Hz'}")
+    print(f"  分片大小:      {fragment_size} bytes")
     print()
 
     # 检查 scapy
@@ -325,8 +332,8 @@ def main():
 
             jpeg = video_source.read_frame()
             pcm = b"\x00" * (samples_per_frame * 2) if args.tone <= 0 else tone_source.read_pcm(samples_per_frame)
-            send_video_frame(device_id, door_ip, local_id, local_ip, target_ip, jpeg)
-            send_audio(device_id, door_ip, local_id, local_ip, target_ip, pcm)
+            send_video_frame(device_id, door_ip, local_id, local_ip, target_ip, jpeg, fragment_size)
+            send_audio(device_id, door_ip, local_id, local_ip, target_ip, pcm, fragment_size)
 
             print(
                 f"\r  [流] 帧 #{frame_no}  {len(jpeg)} bytes  ({elapsed:.1f}s/{duration}s)",
