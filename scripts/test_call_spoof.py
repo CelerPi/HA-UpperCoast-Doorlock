@@ -331,6 +331,16 @@ def send_video_frame(
     return total_parts
 
 
+def build_video_frame_packets(device_id, door_ip, local_id, local_ip, jpeg, frame_no, part_bytes=DEFAULT_VIDEO_PART_BYTES):
+    parts = [jpeg[index:index + part_bytes] for index in range(0, len(jpeg), part_bytes)]
+    packets = []
+    total_parts = len(parts)
+    for part_no, part in enumerate(parts, start=1):
+        hdr = struct.pack("<HHHHH", 1, frame_no & 0xFFFF, total_parts, part_no, len(part))
+        packets.append(build_penguin_packet("b7000a00", 90 + len(part), device_id, door_ip, local_id, local_ip, hdr + part))
+    return packets
+
+
 def send_audio(device_id, door_ip, local_id, local_ip, target_ip, pcm, sequence, fragment_size=DEFAULT_FRAGMENT_SIZE):
     hdr = struct.pack("<HHHHH", 3, sequence & 0xFFFF or 1, 1, 1, len(pcm))
     pkt = build_penguin_packet("b7000a00", 90 + len(pcm), device_id, door_ip, local_id, local_ip, hdr + pcm)
@@ -452,35 +462,47 @@ def main():
     video_source.start()
     if audio_source is not None and hasattr(audio_source, "start"):
         audio_source.start()
-    audio_packets_per_frame = max(1, math.ceil(8000 / fps / audio_samples))
-    audio_sleep = max(0.0, (1 / fps) / audio_packets_per_frame)
+    audio_interval = audio_samples / 8000
+    video_interval = 1 / fps
     audio_sequence = 0
     frame_no = 0
+    sent_audio_packets = 0
+    pending_video_packets = []
+    last_jpeg_size = 0
+    last_video_parts = 0
+    start_at = time.monotonic()
+    end_at = start_at + duration
+    next_video_at = start_at
+    next_audio_at = start_at
     try:
-        while frame_no < duration * fps:
-            frame_no += 1
-            elapsed = frame_no / fps
+        while time.monotonic() < end_at:
+            now = time.monotonic()
 
-            jpeg = video_source.read_frame()
-            parts = send_video_frame(
-                device_id,
-                door_ip,
-                local_id,
-                local_ip,
-                target_ip,
-                jpeg,
-                frame_no,
-                video_part_bytes,
-                fragment_size,
-            )
-            for _ in range(audio_packets_per_frame):
+            if now >= next_video_at:
+                frame_no += 1
+                jpeg = video_source.read_frame()
+                video_packets = build_video_frame_packets(device_id, door_ip, local_id, local_ip, jpeg, frame_no, video_part_bytes)
+                pending_video_packets.extend(video_packets)
+                last_jpeg_size = len(jpeg)
+                last_video_parts = len(video_packets)
+                next_video_at += video_interval
+
+            if now >= next_audio_at:
                 audio_sequence += 1
+                sent_audio_packets += 1
                 pcm = b"\x00" * (audio_samples * 2) if audio_source is None else audio_source.read_pcm(audio_samples)
                 send_audio(device_id, door_ip, local_id, local_ip, target_ip, pcm, audio_sequence, fragment_size)
-                time.sleep(audio_sleep)
+                next_audio_at += audio_interval
+            elif pending_video_packets:
+                pkt = pending_video_packets.pop(0)
+                send_packet_scapy(pkt, door_ip, TARGET_PORT, target_ip, TARGET_PORT, fragment_size)
+            else:
+                sleep_until = min(next_audio_at, next_video_at, end_at)
+                time.sleep(max(0.001, min(0.01, sleep_until - time.monotonic())))
 
+            elapsed = min(duration, time.monotonic() - start_at)
             print(
-                f"\r  [流] 帧 #{frame_no}  {len(jpeg)} bytes/{parts} parts  音频 {audio_packets_per_frame} 包  ({elapsed:.1f}s/{duration}s)",
+                f"\r  [流] 帧 #{frame_no}  {last_jpeg_size} bytes/{last_video_parts} parts  音频 {sent_audio_packets} 包  ({elapsed:.1f}s/{duration}s)",
                 end="",
                 flush=True,
             )
