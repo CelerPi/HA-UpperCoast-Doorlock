@@ -21,7 +21,7 @@
 用法：
   sudo python3 test_call_spoof.py
   sudo python3 test_call_spoof.py --duration 60
-  sudo python3 test_call_spoof.py --video ~/Desktop/demo.mp4 --fps 5
+  sudo python3 test_call_spoof.py --video ~/Desktop/demo.mp4
 
 注意：
   - 必须使用 sudo（root 权限），否则 scapy 无法伪造源 IP
@@ -45,11 +45,12 @@ import time
 TARGET_PORT = 10000
 DISCOVERY_PORT = 10008
 PENGUIN_HEADER = b"PENGUIN0"
-DEFAULT_WIDTH = 128
-DEFAULT_HEIGHT = 96
-DEFAULT_JPEG_QUALITY = 31
+DEFAULT_WIDTH = 640
+DEFAULT_HEIGHT = 480
+DEFAULT_FPS = 1
+DEFAULT_JPEG_QUALITY = 18
 DEFAULT_FRAGMENT_SIZE = 1400
-DEFAULT_MAX_JPEG_BYTES = 1250
+DEFAULT_VIDEO_PART_BYTES = 1000
 
 # 呼叫触发命令字（与 call_state.py 中的 CALL_TRIGGER_COMMANDS 一致）
 CALL_TRIGGERS = {
@@ -80,7 +81,7 @@ class VideoFrameSource:
         width=DEFAULT_WIDTH,
         height=DEFAULT_HEIGHT,
         jpeg_quality=DEFAULT_JPEG_QUALITY,
-        max_jpeg_bytes=DEFAULT_MAX_JPEG_BYTES,
+        max_jpeg_bytes=None,
     ):
         self.video_path = video_path
         self.fps = fps
@@ -145,11 +146,8 @@ class VideoFrameSource:
             if start >= 0 and end >= 0:
                 frame = bytes(self.buffer[start:end + 2])
                 del self.buffer[:end + 2]
-                if len(frame) > self.max_jpeg_bytes:
-                    print(
-                        f"\n[视频] 当前 JPEG {len(frame)} bytes 超过单包目标 "
-                        f"{self.max_jpeg_bytes} bytes，跳过这一帧。"
-                    )
+                if self.max_jpeg_bytes is not None and len(frame) > self.max_jpeg_bytes:
+                    print(f"\n[视频] 当前 JPEG {len(frame)} bytes 超过上限 {self.max_jpeg_bytes} bytes，跳过这一帧。")
                     continue
                 return frame
 
@@ -256,10 +254,25 @@ def send_trigger(cmd, device_id, door_ip, local_id, local_ip, target_ip):
     print(f"  [呼叫] 触发包 {cmd.hex()} {door_ip}:{TARGET_PORT} -> {target_ip}:{TARGET_PORT}")
 
 
-def send_video_frame(device_id, door_ip, local_id, local_ip, target_ip, jpeg, fragment_size=DEFAULT_FRAGMENT_SIZE):
-    hdr = struct.pack("<HHHHH", 1, 1, 1, 1, len(jpeg))
-    pkt = build_penguin_packet("b7000a00", 90 + len(jpeg), device_id, door_ip, local_id, local_ip, hdr + jpeg)
-    send_packet_scapy(pkt, door_ip, TARGET_PORT, target_ip, TARGET_PORT, fragment_size)
+def send_video_frame(
+    device_id,
+    door_ip,
+    local_id,
+    local_ip,
+    target_ip,
+    jpeg,
+    frame_no,
+    part_bytes=DEFAULT_VIDEO_PART_BYTES,
+    fragment_size=DEFAULT_FRAGMENT_SIZE,
+):
+    parts = [jpeg[index:index + part_bytes] for index in range(0, len(jpeg), part_bytes)]
+    total_parts = len(parts)
+    for part_no, part in enumerate(parts, start=1):
+        hdr = struct.pack("<HHHHH", 1, frame_no & 0xFFFF, total_parts, part_no, len(part))
+        pkt = build_penguin_packet("b7000a00", 90 + len(part), device_id, door_ip, local_id, local_ip, hdr + part)
+        send_packet_scapy(pkt, door_ip, TARGET_PORT, target_ip, TARGET_PORT, fragment_size)
+        time.sleep(0.003)
+    return total_parts
 
 
 def send_audio(device_id, door_ip, local_id, local_ip, target_ip, pcm, fragment_size=DEFAULT_FRAGMENT_SIZE):
@@ -277,11 +290,12 @@ def main():
     parser.add_argument("--duration", type=int, default=30, help="呼叫持续时间（秒）")
     parser.add_argument("--trigger", choices=["cd", "98", "b7"], default="cd", help="触发命令字")
     parser.add_argument("--video", help="用于模拟门口机画面的视频文件；不填则生成动态测试画面")
-    parser.add_argument("--fps", type=int, default=5, help="模拟视频帧率，默认 5fps")
-    parser.add_argument("--width", type=int, default=DEFAULT_WIDTH, help="视频宽度，默认 128")
-    parser.add_argument("--height", type=int, default=DEFAULT_HEIGHT, help="视频高度，默认 96")
-    parser.add_argument("--jpeg-quality", type=int, default=DEFAULT_JPEG_QUALITY, help="MJPEG 质量参数，越大体积越小，默认 31")
-    parser.add_argument("--max-jpeg-bytes", type=int, default=DEFAULT_MAX_JPEG_BYTES, help="单帧 JPEG 最大字节数，默认 1250")
+    parser.add_argument("--fps", type=int, default=DEFAULT_FPS, help="模拟视频帧率，默认 1fps")
+    parser.add_argument("--width", type=int, default=DEFAULT_WIDTH, help="视频宽度，默认 640")
+    parser.add_argument("--height", type=int, default=DEFAULT_HEIGHT, help="视频高度，默认 480")
+    parser.add_argument("--jpeg-quality", type=int, default=DEFAULT_JPEG_QUALITY, help="MJPEG 质量参数，越大体积越小，默认 18")
+    parser.add_argument("--max-jpeg-bytes", type=int, help="单帧 JPEG 最大字节数；默认不限制")
+    parser.add_argument("--video-part-bytes", type=int, default=DEFAULT_VIDEO_PART_BYTES, help="协议内视频分片大小，默认 1000")
     parser.add_argument("--tone", type=int, default=440, help="测试音频频率 Hz，默认 440；设为 0 则静音")
     parser.add_argument("--fragment-size", type=int, default=DEFAULT_FRAGMENT_SIZE, help="IP 分片阈值，默认 1400")
     args = parser.parse_args()
@@ -295,7 +309,8 @@ def main():
     width = max(64, args.width)
     height = max(48, args.height)
     jpeg_quality = min(31, max(2, args.jpeg_quality))
-    max_jpeg_bytes = max(600, args.max_jpeg_bytes)
+    max_jpeg_bytes = max(600, args.max_jpeg_bytes) if args.max_jpeg_bytes else None
+    video_part_bytes = max(256, args.video_part_bytes)
     fragment_size = max(576, args.fragment_size)
     trigger_cmd = CALL_TRIGGERS[args.trigger]
     device_id = f"M000101{door_no}000"
@@ -313,7 +328,8 @@ def main():
     print(f"  模拟帧率:      {fps} fps")
     print(f"  视频尺寸:      {width}x{height}")
     print(f"  JPEG质量参数:  {jpeg_quality}")
-    print(f"  单帧上限:      {max_jpeg_bytes} bytes")
+    print(f"  单帧上限:      {str(max_jpeg_bytes) + ' bytes' if max_jpeg_bytes else '不限制'}")
+    print(f"  视频分片:      {video_part_bytes} bytes/part")
     print(f"  测试视频:      {args.video or '动态测试画面'}")
     print(f"  测试音频:      {'静音' if args.tone <= 0 else str(args.tone) + ' Hz'}")
     print(f"  分片大小:      {fragment_size} bytes")
@@ -370,11 +386,21 @@ def main():
 
             jpeg = video_source.read_frame()
             pcm = b"\x00" * (samples_per_frame * 2) if args.tone <= 0 else tone_source.read_pcm(samples_per_frame)
-            send_video_frame(device_id, door_ip, local_id, local_ip, target_ip, jpeg, fragment_size)
+            parts = send_video_frame(
+                device_id,
+                door_ip,
+                local_id,
+                local_ip,
+                target_ip,
+                jpeg,
+                frame_no,
+                video_part_bytes,
+                fragment_size,
+            )
             send_audio(device_id, door_ip, local_id, local_ip, target_ip, pcm, fragment_size)
 
             print(
-                f"\r  [流] 帧 #{frame_no}  {len(jpeg)} bytes  ({elapsed:.1f}s/{duration}s)",
+                f"\r  [流] 帧 #{frame_no}  {len(jpeg)} bytes/{parts} parts  ({elapsed:.1f}s/{duration}s)",
                 end="",
                 flush=True,
             )
