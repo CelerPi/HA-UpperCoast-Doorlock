@@ -191,6 +191,61 @@ class ToneSource:
         return bytes(pcm)
 
 
+class VideoAudioSource:
+    """从视频文件抽取 8kHz / mono / s16le PCM；读完后自动循环。"""
+
+    def __init__(self, video_path):
+        self.video_path = video_path
+        self.proc = None
+        self.buffer = bytearray()
+
+    def start(self):
+        ffmpeg = shutil.which("ffmpeg")
+        if not ffmpeg:
+            print("[音频] 未找到 ffmpeg，无法读取视频音轨。")
+            return
+
+        cmd = [
+            ffmpeg,
+            "-hide_banner", "-loglevel", "error",
+            "-stream_loop", "-1",
+            "-i", self.video_path,
+            "-vn",
+            "-ac", "1",
+            "-ar", "8000",
+            "-f", "s16le",
+            "pipe:1",
+        ]
+        self.proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        print(f"[音频] 使用视频音轨 {self.video_path} (8kHz mono PCM)")
+
+    def read_pcm(self, samples):
+        wanted = samples * 2
+        if not self.proc or not self.proc.stdout:
+            return b"\x00" * wanted
+
+        while len(self.buffer) < wanted:
+            chunk = self.proc.stdout.read(wanted - len(self.buffer))
+            if not chunk:
+                print("\n[音频] 视频音轨无输出，回退为静音。")
+                self.stop()
+                return b"\x00" * wanted
+            self.buffer.extend(chunk)
+
+        pcm = bytes(self.buffer[:wanted])
+        del self.buffer[:wanted]
+        return pcm
+
+    def stop(self):
+        if self.proc:
+            self.proc.terminate()
+            try:
+                self.proc.wait(timeout=2)
+            except subprocess.TimeoutExpired:
+                self.proc.kill()
+            self.proc = None
+
+
 def send_packet_scapy(payload, src_ip, src_port, dst_ip, dst_port, fragment_size=DEFAULT_FRAGMENT_SIZE):
     """使用 scapy 发送伪造源 IP 的 UDP 包。"""
     try:
@@ -298,7 +353,7 @@ def main():
     parser.add_argument("--max-jpeg-bytes", type=int, help="单帧 JPEG 最大字节数；默认不限制")
     parser.add_argument("--video-part-bytes", type=int, default=DEFAULT_VIDEO_PART_BYTES, help="协议内视频分片大小，默认 1000")
     parser.add_argument("--audio-samples", type=int, default=DEFAULT_AUDIO_SAMPLES_PER_PACKET, help="每个音频包的 PCM 采样数，默认 256")
-    parser.add_argument("--tone", type=int, default=440, help="测试音频频率 Hz，默认 440；设为 0 则静音")
+    parser.add_argument("--tone", type=int, help="强制使用测试音频频率 Hz；设为 0 则静音。不填且有 --video 时使用视频音轨")
     parser.add_argument("--fragment-size", type=int, default=DEFAULT_FRAGMENT_SIZE, help="IP 分片阈值，默认 1400")
     args = parser.parse_args()
 
@@ -335,7 +390,13 @@ def main():
     print(f"  视频分片:      {video_part_bytes} bytes/part")
     print(f"  音频包大小:    {audio_samples} samples/packet")
     print(f"  测试视频:      {args.video or '动态测试画面'}")
-    print(f"  测试音频:      {'静音' if args.tone <= 0 else str(args.tone) + ' Hz'}")
+    if args.tone is None and args.video:
+        audio_label = "视频音轨"
+    elif args.tone is None:
+        audio_label = "440 Hz"
+    else:
+        audio_label = "静音" if args.tone <= 0 else f"{args.tone} Hz"
+    print(f"  测试音频:      {audio_label}")
     print(f"  分片大小:      {fragment_size} bytes")
     print()
 
@@ -379,8 +440,18 @@ def main():
         jpeg_quality=jpeg_quality,
         max_jpeg_bytes=max_jpeg_bytes,
     )
-    tone_source = ToneSource(frequency=args.tone)
+    if args.tone is None and args.video:
+        audio_source = VideoAudioSource(args.video)
+    elif args.tone is None:
+        audio_source = ToneSource(frequency=440)
+    elif args.tone <= 0:
+        audio_source = None
+    else:
+        audio_source = ToneSource(frequency=args.tone)
+
     video_source.start()
+    if audio_source is not None and hasattr(audio_source, "start"):
+        audio_source.start()
     audio_packets_per_frame = max(1, math.ceil(8000 / fps / audio_samples))
     audio_sleep = max(0.0, (1 / fps) / audio_packets_per_frame)
     audio_sequence = 0
@@ -404,7 +475,7 @@ def main():
             )
             for _ in range(audio_packets_per_frame):
                 audio_sequence += 1
-                pcm = b"\x00" * (audio_samples * 2) if args.tone <= 0 else tone_source.read_pcm(audio_samples)
+                pcm = b"\x00" * (audio_samples * 2) if audio_source is None else audio_source.read_pcm(audio_samples)
                 send_audio(device_id, door_ip, local_id, local_ip, target_ip, pcm, audio_sequence, fragment_size)
                 time.sleep(audio_sleep)
 
@@ -417,6 +488,8 @@ def main():
         pass
     finally:
         video_source.stop()
+        if audio_source is not None and hasattr(audio_source, "stop"):
+            audio_source.stop()
 
     print(f"\n\n[阶段 4] 发送挂断包...")
     end_pkt = build_penguin_packet("b4000600", 80, device_id, door_ip, local_id, local_ip)
