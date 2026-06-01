@@ -47,10 +47,10 @@ DISCOVERY_PORT = 10008
 PENGUIN_HEADER = b"PENGUIN0"
 DEFAULT_WIDTH = 640
 DEFAULT_HEIGHT = 480
-DEFAULT_FPS = 1
+DEFAULT_FPS = 27
 DEFAULT_JPEG_QUALITY = 18
 DEFAULT_FRAGMENT_SIZE = 1400
-DEFAULT_VIDEO_PART_BYTES = 1000
+DEFAULT_VIDEO_PART_BYTES = 1200
 DEFAULT_AUDIO_SAMPLES_PER_PACKET = 256
 
 # 呼叫触发命令字（与 call_state.py 中的 CALL_TRIGGER_COMMANDS 一致）
@@ -356,12 +356,12 @@ def main():
     parser.add_argument("--duration", type=int, default=30, help="呼叫持续时间（秒）")
     parser.add_argument("--trigger", choices=["cd", "98", "b7"], default="cd", help="触发命令字")
     parser.add_argument("--video", help="用于模拟门口机画面的视频文件；不填则生成动态测试画面")
-    parser.add_argument("--fps", type=int, default=DEFAULT_FPS, help="模拟视频帧率，默认 1fps")
+    parser.add_argument("--fps", type=int, default=DEFAULT_FPS, help="模拟视频帧率，默认 27fps（按 2F 实机抓包）")
     parser.add_argument("--width", type=int, default=DEFAULT_WIDTH, help="视频宽度，默认 640")
     parser.add_argument("--height", type=int, default=DEFAULT_HEIGHT, help="视频高度，默认 480")
     parser.add_argument("--jpeg-quality", type=int, default=DEFAULT_JPEG_QUALITY, help="MJPEG 质量参数，越大体积越小，默认 18")
     parser.add_argument("--max-jpeg-bytes", type=int, help="单帧 JPEG 最大字节数；默认不限制")
-    parser.add_argument("--video-part-bytes", type=int, default=DEFAULT_VIDEO_PART_BYTES, help="协议内视频分片大小，默认 1000")
+    parser.add_argument("--video-part-bytes", type=int, default=DEFAULT_VIDEO_PART_BYTES, help="协议内视频分片大小，默认 1200（按 2F 实机抓包）")
     parser.add_argument("--audio-samples", type=int, default=DEFAULT_AUDIO_SAMPLES_PER_PACKET, help="每个音频包的 PCM 采样数，默认 256")
     parser.add_argument("--tone", type=int, help="强制使用测试音频频率 Hz；设为 0 则静音。不填且有 --video 时使用视频音轨")
     parser.add_argument("--fragment-size", type=int, default=DEFAULT_FRAGMENT_SIZE, help="IP 分片阈值，默认 1400")
